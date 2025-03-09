@@ -1,23 +1,53 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useScript } from '../hooks/useScript';
 
 export const Map = () => {
-  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapDivRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<naver.maps.Map | null>(null);
+  const [isNaverReady, setNaverReady] = useState(false);
 
-  const [isLoading, error] = useScript(
+  const [isLoading, scriptError] = useScript(
     `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${
       import.meta.env.VITE_NAVER_MAP_API_KEY
     }`
   );
 
+  // 스크립트 로딩 완료 후 naver 객체 유무 확인
   useEffect(() => {
-    if (!isLoading && !error) {
+    if (scriptError) {
+      return;
+    }
+    if (!isLoading) {
+      // naver 객체가 있는지 확인
+      if (window.naver && window.naver.maps) {
+        setNaverReady(true);
+      } else {
+        // 스크립트는 로드되었지만 naver 객체가 아직 초기화되지 않은 경우 계속 확인
+        const checkNaver = setInterval(() => {
+          if (window.naver && window.naver.maps) {
+            clearInterval(checkNaver);
+            setNaverReady(true);
+          }
+        }, 500);
+
+        // 일정 시간 후에도 로드되지 않으면 타임아웃 처리
+        setTimeout(() => {
+          clearInterval(checkNaver);
+          if (!window.naver || !window.naver.maps) {
+            console.error('Naver Maps API failed to initialize');
+          }
+        }, 5000);
+      }
+    }
+  }, [isLoading, scriptError]);
+
+  // 지도 초기화
+  useEffect(() => {
+    if (isNaverReady && mapDivRef.current && !mapInstanceRef.current) {
       const { naver } = window;
 
-      if (!naver) return;
-
       const mapOptions = {
-        center: new naver.maps.LatLng(37.5666103, 126.9783882),
+        center: new naver.maps.LatLng(37.5666103, 126.9783882), // 서울시청
         mapDataControl: false,
         zoom: 14,
         zoomControl: true,
@@ -27,21 +57,17 @@ export const Map = () => {
         },
       };
 
-      const map = new naver.maps.Map(mapRef.current!, mapOptions);
+      mapInstanceRef.current = new naver.maps.Map(mapDivRef.current, mapOptions);
     }
-    
-  }, [isLoading, error]);
+  }, [isNaverReady]);
+
   return (
     <>
-      {isLoading ? (
-        <div>지도 로딩 중...</div>
-      ) : (
-        <div ref={mapRef} style={{ width: '100%', height: '400px' }}></div>
-      )}
+      {isLoading && <div>Loading...</div>}
 
-      {error && <div>지도 로드 실패</div>}
+      {isNaverReady && <div ref={mapDivRef} style={{ width: '100%', height: '400px' }}></div>}
+
+      {scriptError && <div>지도 로드 실패</div>}
     </>
   );
 };
-
-
