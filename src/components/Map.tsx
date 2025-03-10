@@ -1,10 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useScript } from '../hooks/useScript';
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<naver.maps.Map | null>(null);
+  const currentMarkerRef = useRef<naver.maps.Marker | null>(null);
   const [isNaverReady, setNaverReady] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+
+  // 위치 정보 관련 상태
+  const [currentLocation, setCurrentLocation] = useState<naver.maps.CoordLiteral | null>(null);
+  const defaultCenter: naver.maps.LatLngLiteral = {
+    lat: 37.5666103,
+    lng: 126.9783882, // 서울시청 기본값
+  };
 
   const [isLoading, scriptError] = useScript(
     `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${
@@ -12,34 +21,121 @@ export const Map = () => {
     }`
   );
 
+  // 네이버 객체 준비 확인 - useCallback으로 메모이제이션
+  const checkNaverAvailability = useCallback(() => {
+    if (window.naver && window.naver.maps) {
+      setNaverReady(true);
+      return true;
+    } else {
+      setNaverReady(false);
+      return false;
+    }
+  }, []);
+
   // 스크립트 로딩 완료 후 naver 객체 유무 확인
   useEffect(() => {
-    if (scriptError) {
+    if (scriptError) return;
+
+    if (!isLoading) {
+      // naver 객체 즉시 확인 될 때
+      if (checkNaverAvailability()) return;
+
+      // naver 객체 로드 지연 시 반복 확인
+      const checkNaver = setInterval(() => {
+        if (checkNaverAvailability()) {
+          clearInterval(checkNaver);
+        }
+      }, 500);
+
+      // 5초 후 타임아웃 처리
+      const timeoutId = setTimeout(() => {
+        clearInterval(checkNaver);
+        if (!checkNaverAvailability()) {
+          console.error('Naver Maps API failed to initialize');
+        }
+      }, 5000);
+
+      return () => {
+        clearInterval(checkNaver);
+        clearTimeout(timeoutId);
+      };
+    }
+  }, [isLoading, scriptError, checkNaverAvailability]);
+
+  // 현재 위치 가져오기 함수 - useCallback으로 메모이제이션
+  const getCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      console.error('Geolocation is not supported by this browser.');
       return;
     }
-    if (!isLoading) {
-      // naver 객체가 있는지 확인
-      if (window.naver && window.naver.maps) {
-        setNaverReady(true);
-      } else {
-        // 스크립트는 로드되었지만 naver 객체가 아직 초기화되지 않은 경우 계속 확인
-        const checkNaver = setInterval(() => {
-          if (window.naver && window.naver.maps) {
-            clearInterval(checkNaver);
-            setNaverReady(true);
-          }
-        }, 500);
 
-        // 일정 시간 후에도 로드되지 않으면 타임아웃 처리
-        setTimeout(() => {
-          clearInterval(checkNaver);
-          if (!window.naver || !window.naver.maps) {
-            console.error('Naver Maps API failed to initialize');
-          }
-        }, 5000);
+    setIsLocating(true);
+
+    const updateCurrentGeo = (position: GeolocationPosition) => {
+      setCurrentLocation({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      });
+      setIsLocating(false);
+    };
+
+    const errorCurrentGeo = (error: GeolocationPositionError) => {
+      console.error('Error getting current location:', error);
+      setCurrentLocation(null);
+      setIsLocating(false);
+
+      if (error.code === error.PERMISSION_DENIED) {
+        alert(
+          '위치 정보 제공이 거부되었습니다.\n브라우저 설정에서 위치 정보 제공을 허용해 주세요.'
+        );
+      }
+    };
+
+    const geoOptions: PositionOptions = {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    };
+
+    navigator.geolocation.getCurrentPosition(updateCurrentGeo, errorCurrentGeo, geoOptions);
+  }, []);
+
+  // 주변 장소 정보 가져오기 (API 호출)
+  const fetchNearbyPlaces = () => {};
+
+  // 현위치 마커 업데이트
+  const updateCurrentLocationMarker = useCallback(() => {
+    if (!mapInstanceRef.current || !isNaverReady) return;
+
+    const { naver } = window;
+
+    // 지도 중심 이동
+    mapInstanceRef.current.setCenter(currentLocation ?? defaultCenter);
+
+    // 마커가 이미 존재하면 위치만 업데이트
+    if (currentMarkerRef.current && currentLocation) {
+      currentMarkerRef.current.setPosition(currentLocation);
+    } else {
+      // 처음 생성하는 경우 현재 위치값이 있으면 현위치 마커 신규 생성
+      if (currentLocation) {
+        currentMarkerRef.current = new naver.maps.Marker({
+          position: currentLocation,
+          map: mapInstanceRef.current,
+          icon: {
+            content:
+              '<div style="background-color:#5CACF2;width:15px;height:15px;border-radius:50%;border:2px solid white;"></div>',
+            anchor: new naver.maps.Point(7.5, 7.5),
+          },
+          zIndex: 100,
+        });
       }
     }
-  }, [isLoading, scriptError]);
+  }, [isNaverReady, currentLocation]);
+
+  // 컴포넌트 마운트 시 위치 정보 가져오기
+  useEffect(() => {
+    getCurrentLocation();
+  }, [getCurrentLocation]);
 
   // 지도 초기화
   useEffect(() => {
@@ -47,27 +143,80 @@ export const Map = () => {
       const { naver } = window;
 
       const mapOptions = {
-        center: new naver.maps.LatLng(37.5666103, 126.9783882), // 서울시청
+        center: currentLocation ?? defaultCenter,
         mapDataControl: false,
         zoom: 14,
         zoomControl: true,
         zoomControlOptions: {
-          position: naver.maps.Position.RIGHT_CENTER,
+          position: naver.maps.Position.RIGHT_TOP,
           style: naver.maps.ZoomControlStyle.SMALL,
         },
       };
 
       mapInstanceRef.current = new naver.maps.Map(mapDivRef.current, mapOptions);
+
+      // 현위치 버튼 추가
+      naver.maps.Event.once(mapInstanceRef.current, 'init', () => {
+        const locationBtnHtml = `
+          <button class="location-btn" style="
+            width: 34px; 
+            height: 34px; 
+            background: white; 
+            border: 1px solid #ddd; 
+            border-radius: 2px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            cursor: pointer;
+          ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.94 11A8 8 0 0 0 12.62 4.06a8.22 8.22 0 0 0-8.56 7.94"></path>
+              <path d="M12 19.96A8.23 8.23 0 0 0 20.25 12"></path>
+              <path d="M4.06 12a8.23 8.23 0 0 0 8.19 7.94"></path>
+            </svg>
+          </button>
+        `;
+
+        const currentLocationButton = new naver.maps.CustomControl(locationBtnHtml, {
+          position: naver.maps.Position.RIGHT_CENTER,
+        });
+
+        currentLocationButton.setMap(mapInstanceRef.current);
+
+        naver.maps.Event.addDOMListener(currentLocationButton.getElement(), 'click', (e) => {
+          e.preventDefault(); // 링크 기본 동작 방지
+          getCurrentLocation();
+        });
+      });
+
+      // 초기 주변 장소 로드
+      fetchNearbyPlaces();
     }
-  }, [isNaverReady]);
+  }, [isNaverReady, currentLocation, getCurrentLocation, fetchNearbyPlaces]);
+
+  // 현재 위치 마커 업데이트
+  useEffect(() => {
+    updateCurrentLocationMarker();
+  }, [updateCurrentLocationMarker]);
 
   return (
-    <>
-      {isLoading && <div>Loading...</div>}
+    <div className="map-container">
+      {isLoading && <div className="loading-indicator">지도 로딩 중...</div>}
 
-      {isNaverReady && <div ref={mapDivRef} style={{ width: '100%', height: '400px' }}></div>}
+      <div
+        ref={mapDivRef}
+        style={{
+          width: '100%',
+          height: '400px',
+          display: isNaverReady ? 'block' : 'none',
+        }}
+      />
 
-      {scriptError && <div>지도 로드 실패</div>}
-    </>
+      {scriptError && <div className="error-message">지도 로드 실패</div>}
+
+      {isLocating && <div className="locating-indicator">현재 위치 확인 중...</div>}
+    </div>
   );
 };
