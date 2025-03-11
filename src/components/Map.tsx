@@ -5,21 +5,17 @@ export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<naver.maps.Map | null>(null);
   const currentMarkerRef = useRef<naver.maps.Marker | null>(null);
-  const [isNaverReady, setNaverReady] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
 
-  // 위치 정보 관련 상태
+  const [isNaverReady, setNaverReady] = useState<boolean>(false);
+  const [isLocating, setIsLocating] = useState<boolean>(false);
   const [currentLocation, setCurrentLocation] = useState<naver.maps.CoordLiteral | null>(null);
-  const defaultCenter: naver.maps.LatLngLiteral = {
-    lat: 37.5666103,
-    lng: 126.9783882, // 서울시청 기본값
-  };
 
-  const [isLoading, scriptError] = useScript(
+  const [isScriptLoading, scriptError] = useScript(
     `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${
       import.meta.env.VITE_NAVER_MAP_API_KEY
     }`
   );
+  const defaultCenter: naver.maps.LatLngLiteral = { lat: 37.5666103, lng: 126.9783882 }; // 서울시청 기본값
 
   // 네이버 객체 준비 확인 - useCallback으로 메모이제이션
   const checkNaverAvailability = useCallback(() => {
@@ -36,7 +32,7 @@ export const Map = () => {
   useEffect(() => {
     if (scriptError) return;
 
-    if (!isLoading) {
+    if (!isScriptLoading) {
       // naver 객체 즉시 확인 될 때
       if (checkNaverAvailability()) return;
 
@@ -60,10 +56,12 @@ export const Map = () => {
         clearTimeout(timeoutId);
       };
     }
-  }, [isLoading, scriptError, checkNaverAvailability]);
+  }, [isScriptLoading, scriptError, checkNaverAvailability]);
 
   // 현재 위치 가져오기 함수 - useCallback으로 메모이제이션
   const getCurrentLocation = useCallback(() => {
+    console.log('navigator.geolocation??', navigator.geolocation);
+
     if (!navigator.geolocation) {
       console.error('Geolocation is not supported by this browser.');
       return;
@@ -100,11 +98,10 @@ export const Map = () => {
     navigator.geolocation.getCurrentPosition(updateCurrentGeo, errorCurrentGeo, geoOptions);
   }, []);
 
-  // 주변 장소 정보 가져오기 (API 호출)
-  const fetchNearbyPlaces = () => {};
-
-  // 현위치 마커 업데이트
+  // 현위치 마커 업데이트 함수 - useCallback으로 메모이제이션
   const updateCurrentLocationMarker = useCallback(() => {
+    console.log(mapInstanceRef.current, isNaverReady, currentLocation, currentMarkerRef);
+
     if (!mapInstanceRef.current || !isNaverReady) return;
 
     const { naver } = window;
@@ -112,12 +109,12 @@ export const Map = () => {
     // 지도 중심 이동
     mapInstanceRef.current.setCenter(currentLocation ?? defaultCenter);
 
-    // 마커가 이미 존재하면 위치만 업데이트
-    if (currentMarkerRef.current && currentLocation) {
-      currentMarkerRef.current.setPosition(currentLocation);
-    } else {
-      // 처음 생성하는 경우 현재 위치값이 있으면 현위치 마커 신규 생성
-      if (currentLocation) {
+    if (currentLocation) {
+      // 현위치 마커가 이미 있으면 마커 위치만 재설정
+      if (currentMarkerRef.current) {
+        currentMarkerRef.current.setPosition(currentLocation);
+      } else {
+        // 마커가 없으면 현위치 마커 신규 생성
         currentMarkerRef.current = new naver.maps.Marker({
           position: currentLocation,
           map: mapInstanceRef.current,
@@ -129,15 +126,19 @@ export const Map = () => {
           zIndex: 100,
         });
       }
+    } else if (currentMarkerRef.current) {
+      // 위치 정보가 없는데 마커가 있으면 마커 제거
+      currentMarkerRef.current.setMap(null);
+      currentMarkerRef.current = null;
     }
   }, [isNaverReady, currentLocation]);
 
-  // 컴포넌트 마운트 시 위치 정보 가져오기
+  // 현위치 마커 업데이트
   useEffect(() => {
-    getCurrentLocation();
-  }, [getCurrentLocation]);
+    updateCurrentLocationMarker();
+  }, [updateCurrentLocationMarker]);
 
-  // 지도 초기화
+  // 지도 초기화 및 이벤트 설정
   useEffect(() => {
     if (isNaverReady && mapDivRef.current && !mapInstanceRef.current) {
       const { naver } = window;
@@ -189,34 +190,31 @@ export const Map = () => {
           e.preventDefault(); // 링크 기본 동작 방지
           getCurrentLocation();
         });
+
+        getCurrentLocation();
       });
-
-      // 초기 주변 장소 로드
-      fetchNearbyPlaces();
     }
-  }, [isNaverReady, currentLocation, getCurrentLocation, fetchNearbyPlaces]);
-
-  // 현재 위치 마커 업데이트
-  useEffect(() => {
-    updateCurrentLocationMarker();
-  }, [updateCurrentLocationMarker]);
+  }, [isNaverReady, getCurrentLocation]);
 
   return (
-    <div className="map-container">
-      {isLoading && <div className="loading-indicator">지도 로딩 중...</div>}
+    console.log('current', currentLocation),
+    (
+      <div className="map-container">
+        {isScriptLoading && <div className="loading-indicator">지도 로딩 중...</div>}
 
-      <div
-        ref={mapDivRef}
-        style={{
-          width: '100%',
-          height: '400px',
-          display: isNaverReady ? 'block' : 'none',
-        }}
-      />
+        <div
+          ref={mapDivRef}
+          style={{
+            width: '100%',
+            height: '400px',
+            display: isNaverReady ? 'block' : 'none',
+          }}
+        />
 
-      {scriptError && <div className="error-message">지도 로드 실패</div>}
+        {scriptError && <div className="error-message">지도 로드 실패</div>}
 
-      {isLocating && <div className="locating-indicator">현재 위치 확인 중...</div>}
-    </div>
+        {isLocating && <div className="locating-indicator">현재 위치 확인 중...</div>}
+      </div>
+    )
   );
 };
