@@ -1,47 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useScript } from '../hooks/useScript';
+import { useScript } from '../../../hooks/useScript';
 import axios from 'axios';
-
-// API 응답 타입 정의
-interface ViewNightSpotResult {
-  RESULT: {
-    CODE: string;
-    MESSAGE: string;
-  };
-  row: ViewNightSpot[];
-}
-
-interface ViewNightSpot {
-  SUBJECT_CD: string;
-  TITLE: string;
-  ADDR: string;
-  LA: string;
-  LO: string;
-  TEL_NO: string;
-  URL: string;
-  OPERATING_TIME: string;
-  FREE_YN: string;
-  ENTR_FEE: string;
-  CONTENTS: string;
-  SUBWAY: string;
-  BUS: string;
-  PARKING_INFO: string;
-  REG_DATE: string;
-  MOD_DATE: string;
-}
-
-interface ApiResponse {
-  viewNightSpot: ViewNightSpotResult;
-}
+import { useNaverObjInitialization } from '../hooks/useNaverObjInitialization';
+import { useCurrentLocation } from '../hooks/useCurrentLocation';
+import { ApiResponse, ViewNightSpot } from '../types/mapTypes';
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<naver.maps.Map | null>(null);
   const currentMarkerRef = useRef<naver.maps.Marker | null>(null);
-
-  const [isNaverReady, setNaverReady] = useState<boolean>(false);
-  const [isLocating, setIsLocating] = useState<boolean>(false);
-  const [currentLocation, setCurrentLocation] = useState<naver.maps.CoordLiteral | null>(null);
 
   const [totalPlaceData, setTotalPlaceData] = useState<ViewNightSpot[]>([]);
   const [isLoadingPlaces, setIsLoadingPlaces] = useState<boolean>(false);
@@ -57,14 +24,11 @@ export const Map = () => {
 
   // 전체 장소 정보 가져오기 (API 호출) 함수 - useCallback으로 메모이제이션
   const fetchViewNightSpotData = useCallback(async () => {
-
     if (!isLoadingPlaces) setIsLoadingPlaces(true);
 
     try {
       // prettier-ignoer
-      const url = `http://openapi.seoul.go.kr:8088/${
-        import.meta.env.VITE_SEOUL_API_KEY
-      }/json/viewNightSpot/1/1000`;
+      const url = `http://openapi.seoul.go.kr:8088/${import.meta.env.VITE_SEOUL_API_KEY}/json/viewNightSpot/1/1000`;
       const result = await axios.get<ApiResponse>(url);
 
       if (result.data.viewNightSpot.RESULT.CODE === 'INFO-000') {
@@ -82,84 +46,11 @@ export const Map = () => {
     fetchViewNightSpotData();
   }, [fetchViewNightSpotData]);
 
-  // 네이버 객체 준비 확인 - useCallback으로 메모이제이션
-  const checkNaverAvailability = useCallback(() => {
-    if (window.naver && window.naver.maps) {
-      setNaverReady(true);
-      return true;
-    } else {
-      setNaverReady(false);
-      return false;
-    }
-  }, []);
+  // 네이버 객체 초기화
+  const { isNaverReady } = useNaverObjInitialization(isScriptLoading, scriptError);
 
-  // 스크립트 로딩 완료 후 naver 객체 유무 확인
-  useEffect(() => {
-    if (scriptError) return;
-
-    if (!isScriptLoading) {
-      // naver 객체 즉시 확인 될 때
-      if (checkNaverAvailability()) return;
-
-      // naver 객체 로드 지연 시 반복 확인
-      const checkNaver = setInterval(() => {
-        if (checkNaverAvailability()) {
-          clearInterval(checkNaver);
-        }
-      }, 500);
-
-      // 5초 후 타임아웃 처리
-      const timeoutId = setTimeout(() => {
-        clearInterval(checkNaver);
-        if (!checkNaverAvailability()) {
-          console.error('Naver Maps API failed to initialize');
-        }
-      }, 5000);
-
-      return () => {
-        clearInterval(checkNaver);
-        clearTimeout(timeoutId);
-      };
-    }
-  }, [isScriptLoading, scriptError, checkNaverAvailability]);
-
-  // 현재 위치 가져오기 함수 - useCallback으로 메모이제이션
-  const getCurrentLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      console.error('Geolocation is not supported by this browser.');
-      return;
-    }
-
-    setIsLocating(true);
-
-    const updateCurrentGeo = (position: GeolocationPosition) => {
-      setCurrentLocation({
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      });
-      setIsLocating(false);
-    };
-
-    const errorCurrentGeo = (error: GeolocationPositionError) => {
-      console.error('Error getting current location:', error);
-      setCurrentLocation(null);
-      setIsLocating(false);
-
-      if (error.code === error.PERMISSION_DENIED) {
-        alert(
-          '위치 정보 제공이 거부되었습니다.\n브라우저 설정에서 위치 정보 제공을 허용해 주세요.'
-        );
-      }
-    };
-
-    const geoOptions: PositionOptions = {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
-    };
-
-    navigator.geolocation.getCurrentPosition(updateCurrentGeo, errorCurrentGeo, geoOptions);
-  }, []);
+  // 현위치 불러오기
+  const { currentLocation, isLocating, getCurrentLocation } = useCurrentLocation();
 
   // 현위치 마커 업데이트 함수 - useCallback으로 메모이제이션
   const updateCurrentLocationMarker = useCallback(() => {
@@ -207,7 +98,6 @@ export const Map = () => {
 
     // 기존 장소 마커 제거
     if (placeMarkers.length > 0) {
-
       placeMarkers.forEach((marker) => {
         marker.setMap(null);
       });
@@ -322,23 +212,21 @@ export const Map = () => {
   }, [isNaverReady, getCurrentLocation]);
 
   return (
-    (
-      <div className="map-container">
-        {isScriptLoading && <div className="loading-indicator">지도 로딩 중...</div>}
+    <div className="map-container">
+      {isScriptLoading && <div className="loading-indicator">지도 로딩 중...</div>}
 
-        <div
-          ref={mapDivRef}
-          style={{
-            width: '100%',
-            height: '400px',
-            display: isNaverReady ? 'block' : 'none',
-          }}
-        />
+      <div
+        ref={mapDivRef}
+        style={{
+          width: '100%',
+          height: '400px',
+          display: isNaverReady ? 'block' : 'none',
+        }}
+      />
 
-        {scriptError && <div className="error-message">지도 로드 실패</div>}
+      {scriptError && <div className="error-message">지도 로드 실패</div>}
 
-        {isLocating && <div className="locating-indicator">현재 위치 확인 중...</div>}
-      </div>
-    )
+      {isLocating && <div className="locating-indicator">현재 위치 확인 중...</div>}
+    </div>
   );
 };
