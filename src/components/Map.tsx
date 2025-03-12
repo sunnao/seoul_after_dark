@@ -1,5 +1,38 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useScript } from '../hooks/useScript';
+import axios from 'axios';
+
+// API 응답 타입 정의
+interface ViewNightSpotResult {
+  RESULT: {
+    CODE: string;
+    MESSAGE: string;
+  };
+  row: ViewNightSpot[];
+}
+
+interface ViewNightSpot {
+  SUBJECT_CD: string;
+  TITLE: string;
+  ADDR: string;
+  LA: string;
+  LO: string;
+  TEL_NO: string;
+  URL: string;
+  OPERATING_TIME: string;
+  FREE_YN: string;
+  ENTR_FEE: string;
+  CONTENTS: string;
+  SUBWAY: string;
+  BUS: string;
+  PARKING_INFO: string;
+  REG_DATE: string;
+  MOD_DATE: string;
+}
+
+interface ApiResponse {
+  viewNightSpot: ViewNightSpotResult;
+}
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
@@ -10,12 +43,43 @@ export const Map = () => {
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [currentLocation, setCurrentLocation] = useState<naver.maps.CoordLiteral | null>(null);
 
+  const [totalPlaceData, setTotalPlaceData] = useState<ViewNightSpot[]>([]);
+  const [isLoadingPlaces, setIsLoadingPlaces] = useState<boolean>(false);
+  const [placeMarkers, setPlaceMarkers] = useState<naver.maps.Marker[]>([]);
+
   const [isScriptLoading, scriptError] = useScript(
     `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${
       import.meta.env.VITE_NAVER_MAP_API_KEY
     }`
   );
   const defaultCenter: naver.maps.LatLngLiteral = { lat: 37.5666103, lng: 126.9783882 }; // 서울시청 기본값
+
+  // 전체 장소 정보 가져오기 (API 호출) 함수 - useCallback으로 메모이제이션
+  const fetchViewNightSpotData = useCallback(async () => {
+
+    if (!isLoadingPlaces) setIsLoadingPlaces(true);
+
+    try {
+      // prettier-ignoer
+      const url = `http://openapi.seoul.go.kr:8088/${
+        import.meta.env.VITE_SEOUL_API_KEY
+      }/json/viewNightSpot/1/1000`;
+      const result = await axios.get<ApiResponse>(url);
+
+      if (result.data.viewNightSpot.RESULT.CODE === 'INFO-000') {
+        const places = result.data.viewNightSpot.row;
+        setTotalPlaceData(places);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingPlaces(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchViewNightSpotData();
+  }, [fetchViewNightSpotData]);
 
   // 네이버 객체 준비 확인 - useCallback으로 메모이제이션
   const checkNaverAvailability = useCallback(() => {
@@ -60,8 +124,6 @@ export const Map = () => {
 
   // 현재 위치 가져오기 함수 - useCallback으로 메모이제이션
   const getCurrentLocation = useCallback(() => {
-    console.log('navigator.geolocation??', navigator.geolocation);
-
     if (!navigator.geolocation) {
       console.error('Geolocation is not supported by this browser.');
       return;
@@ -100,8 +162,6 @@ export const Map = () => {
 
   // 현위치 마커 업데이트 함수 - useCallback으로 메모이제이션
   const updateCurrentLocationMarker = useCallback(() => {
-    console.log(mapInstanceRef.current, isNaverReady, currentLocation, currentMarkerRef);
-
     if (!mapInstanceRef.current || !isNaverReady) return;
 
     const { naver } = window;
@@ -137,6 +197,61 @@ export const Map = () => {
   useEffect(() => {
     updateCurrentLocationMarker();
   }, [updateCurrentLocationMarker]);
+
+  // 장소 마커 업데이트 함수 - useCallback으로 메모이제이션
+  const updatePlaceMarkers = useCallback(() => {
+    if (!mapInstanceRef.current || !isNaverReady) return;
+
+    const { naver } = window;
+
+    // 기존 장소 마커 제거
+    if (placeMarkers.length > 0) {
+
+      placeMarkers.forEach((marker) => {
+        marker.setMap(null);
+      });
+      setPlaceMarkers([]);
+    }
+
+    // 새 장소 마커 생성
+    const newPlaceMarkerList: naver.maps.Marker[] = [];
+    totalPlaceData.forEach((place) => {
+      if (!place.LA || !place.LO) return;
+
+      try {
+        const marker = new naver.maps.Marker({
+          position: new naver.maps.LatLng(Number(place.LA), Number(place.LO)),
+          map: mapInstanceRef.current!,
+          title: place.TITLE,
+          // icon: {
+          //   content: `<div style="background-color:#FF6B6B;width:10px;height:10px;border-radius:50%;border:1px solid white;"></div>`,
+          //   anchor: new naver.maps.Point(5, 5),
+          // },
+          zIndex: 50,
+        });
+
+        // 마커 클릭 이벤트
+        naver.maps.Event.addListener(marker, 'click', () => {
+          const infoWindow = new naver.maps.InfoWindow({
+            content: `<div style="padding:5px;min-width:100px;color:black">${place.TITLE}</div>`,
+            borderWidth: 1,
+            disableAnchor: true,
+          });
+
+          infoWindow.open(mapInstanceRef.current!, marker);
+        });
+
+        newPlaceMarkerList.push(marker);
+      } catch (e) {
+        console.error('마커 생성 실패', e, place);
+      }
+    });
+    setPlaceMarkers(newPlaceMarkerList);
+  }, [isNaverReady, totalPlaceData]);
+
+  useEffect(() => {
+    updatePlaceMarkers();
+  }, [updatePlaceMarkers]);
 
   // 지도 초기화 및 이벤트 설정
   useEffect(() => {
@@ -197,7 +312,6 @@ export const Map = () => {
   }, [isNaverReady, getCurrentLocation]);
 
   return (
-    console.log('current', currentLocation),
     (
       <div className="map-container">
         {isScriptLoading && <div className="loading-indicator">지도 로딩 중...</div>}
