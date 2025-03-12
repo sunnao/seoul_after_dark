@@ -46,6 +46,7 @@ export const Map = () => {
   const [totalPlaceData, setTotalPlaceData] = useState<ViewNightSpot[]>([]);
   const [isLoadingPlaces, setIsLoadingPlaces] = useState<boolean>(false);
   const [placeMarkers, setPlaceMarkers] = useState<naver.maps.Marker[]>([]);
+  const seletedInfoWindowRef = useRef<naver.maps.InfoWindow | null>(null);
 
   const [isScriptLoading, scriptError] = useScript(
     `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${
@@ -239,6 +240,7 @@ export const Map = () => {
           });
 
           infoWindow.open(mapInstanceRef.current!, marker);
+          seletedInfoWindowRef.current = infoWindow;
         });
 
         newPlaceMarkerList.push(marker);
@@ -304,6 +306,14 @@ export const Map = () => {
         naver.maps.Event.addDOMListener(currentLocationButton.getElement(), 'click', (e) => {
           e.preventDefault(); // 링크 기본 동작 방지
           getCurrentLocation();
+        });
+
+        // 지도 클릭 이벤트 추가
+        naver.maps.Event.addListener(mapInstanceRef.current, 'click', () => {
+          if (seletedInfoWindowRef.current) {
+            seletedInfoWindowRef.current.close();
+            seletedInfoWindowRef.current = null;
+          }
         });
 
         getCurrentLocation();
