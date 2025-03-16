@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useScript } from '../../../hooks/useScript';
+import { useScript } from '@/hooks/useScript';
 import axios from 'axios';
-import { useNaverObjInitialization } from '../hooks/useNaverObjInitialization';
-import { useCurrentLocation } from '../hooks/useCurrentLocation';
-import { ApiResponse, ViewNightSpot } from '../types/mapTypes';
+import { useNaverObjInitialization } from '@features/map/hooks/useNaverObjInitialization';
+import { useCurrentLocation } from '@features/map/hooks/useCurrentLocation';
+import { ApiResponse, ViewNightSpot } from '@features/map/types/mapTypes';
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
