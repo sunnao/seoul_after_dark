@@ -18,8 +18,9 @@ export const Map = () => {
   const [isScriptLoading, scriptError] = useScript(
     `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${
       import.meta.env.VITE_NAVER_MAP_API_KEY
-    }`
+    }`,
   );
+  // prettier-ignore
   const defaultCenter: naver.maps.LatLngLiteral = { lat: 37.5666103, lng: 126.9783882 }; // 서울시청 기본값
 
   // 전체 장소 정보 가져오기 (API 호출) 함수 - useCallback으로 메모이제이션
@@ -134,7 +135,7 @@ export const Map = () => {
         return null;
       }
     },
-    [isNaverReady]
+    [isNaverReady],
   );
 
   // totalPlaceData가 변경될 때만 장소 마커 참조 변경
@@ -191,7 +192,7 @@ export const Map = () => {
       position: naver.maps.Position.RIGHT_CENTER,
     });
     naver.maps.Event.addDOMListener(currentLocationButton.getElement(), 'click', () =>
-      getCurrentLocation()
+      getCurrentLocation(),
     );
     currentLocationButton.setMap(mapInstanceRef.current);
 
@@ -237,14 +238,7 @@ export const Map = () => {
     <div className="map-container">
       {isScriptLoading && <div className="loading-indicator">지도 로딩 중...</div>}
 
-      <div
-        ref={mapDivRef}
-        style={{
-          width: '100%',
-          height: '400px',
-          display: isNaverReady ? 'block' : 'none',
-        }}
-      />
+      <div ref={mapDivRef} className={`h-[400px] w-full ${isNaverReady ? 'block' : 'hidden'}`} />
 
       {scriptError && <div className="error-message">지도 로드 실패</div>}
 
