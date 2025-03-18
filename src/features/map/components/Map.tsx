@@ -155,7 +155,6 @@ export const Map = () => {
           const infoWindowContent = `
             <div style="padding:10px;min-width:200px;color:black">
               <h3 style="font-weight:bold;margin-bottom:5px">${place.TITLE}</h3>
-              <p style="font-size:12px;color:#666;margin-bottom:8px">${place.ADDR || ''}</p>
               <button id="viewMoreBtn" style="font-size:12px;color:blue;cursor:pointer;text-decoration:underline">더보기</button>
             </div>
           `;
