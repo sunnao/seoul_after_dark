@@ -11,4 +11,13 @@ export default defineConfig({
       { find: '@features', replacement: '/src/features' },
     ],
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://openapi.seoul.go.kr:8088',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
 });

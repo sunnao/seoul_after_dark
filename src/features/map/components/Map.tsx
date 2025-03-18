@@ -41,7 +41,7 @@ export const Map = () => {
 
     try {
       // prettier-ignore
-      const url = `http://openapi.seoul.go.kr:8088/${import.meta.env.VITE_SEOUL_API_KEY}/json/viewNightSpot/1/1000`;
+      const url = `/api/${import.meta.env.VITE_SEOUL_API_KEY}/json/viewNightSpot/1/1000`;
       const result = await axios.get<ApiResponse>(url);
 
       if (result.data.viewNightSpot.RESULT.CODE === 'INFO-000') {
