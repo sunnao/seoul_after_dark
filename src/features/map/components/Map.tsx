@@ -3,7 +3,14 @@ import { useScript } from '@/hooks/useScript';
 import axios from 'axios';
 import { useNaverObjInitialization } from '@features/map/hooks/useNaverObjInitialization';
 import { useCurrentLocation } from '@features/map/hooks/useCurrentLocation';
-import { ApiResponse, ViewNightSpot } from '@features/map/types/mapTypes';
+import { ApiResponse, MarkerWithData, ViewNightSpot } from '@features/map/types/mapTypes';
+
+import { MdOutlineMyLocation } from 'react-icons/md';
+import { ImSpinner2 } from 'react-icons/im';
+import { FaList } from 'react-icons/fa';
+import { renderToString } from 'react-dom/server';
+import Sidebar from '@/features/map/components/SideBar';
+
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
@@ -11,9 +18,14 @@ export const Map = () => {
   const currentMarkerRef = useRef<naver.maps.Marker | null>(null);
 
   const [totalPlaceData, setTotalPlaceData] = useState<ViewNightSpot[]>([]);
+  const [visiblePlacesData, setVisiblePlacesData] = useState<ViewNightSpot[]>([]);
   const [isLoadingPlaces, setIsLoadingPlaces] = useState<boolean>(false);
-  const placeMarkersRef = useRef<naver.maps.Marker[]>([]);
+
+  const totalMarkerPlacePairRef = useRef<MarkerWithData[]>([]);
   const seletedInfoWindowRef = useRef<naver.maps.InfoWindow | null>(null);
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [selectedPlace, setSelectedPlace] = useState<ViewNightSpot | null>(null);
 
   const [isScriptLoading, scriptError] = useScript(
     `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${
@@ -72,8 +84,9 @@ export const Map = () => {
           position: currentLocation,
           map: mapInstanceRef.current,
           icon: {
-            content:
-              '<div style="background-color:#5CACF2;width:15px;height:15px;border-radius:50%;border:2px solid white;"></div>',
+            content: renderToString(
+              <div className="h-[13px] w-[13px] rounded-full bg-violet-600 outline-6 outline-violet-600/25"></div>,
+            ),
             anchor: new naver.maps.Point(7.5, 7.5),
           },
           zIndex: 100,
@@ -96,12 +109,31 @@ export const Map = () => {
     if (!mapInstanceRef.current || !isNaverReady) return;
 
     const mapBounds = mapInstanceRef.current.getBounds();
+    const visibleData: ViewNightSpot[] = [];
 
-    placeMarkersRef.current.forEach((marker) => {
+    totalMarkerPlacePairRef.current.forEach(({ marker, placeData }) => {
       const isInBounds = mapBounds.hasPoint(marker.getPosition());
       marker.setMap(isInBounds ? mapInstanceRef.current : null);
+
+      if (isInBounds) {
+        visibleData.push(placeData);
+      }
     });
+    setVisiblePlacesData(visibleData);
   }, [isNaverReady]);
+
+  // 사이드바 열기 함수
+  const openSidebar = useCallback((place: ViewNightSpot | null = null) => {
+    setSelectedPlace(place);
+    setIsSidebarOpen(true);
+  }, []);
+
+  // 사이드바 닫기 함수
+  const closeSidebar = useCallback(() => {
+    setIsSidebarOpen(false);
+    // 일정 시간 후 선택된 장소 정보 초기화 (애니메이션 완료 후)
+    // setTimeout(() => setSelectedPlace(null), 300);
+  }, []);
 
   const createMarker = useCallback(
     (place: ViewNightSpot) => {
@@ -119,23 +151,42 @@ export const Map = () => {
 
         // 마커 클릭 이벤트
         marker.addListener('click', () => {
+          // 인포윈도우 내용 생성 (더보기 버튼 포함)
+          const infoWindowContent = `
+            <div style="padding:10px;min-width:200px;color:black">
+              <h3 style="font-weight:bold;margin-bottom:5px">${place.TITLE}</h3>
+              <p style="font-size:12px;color:#666;margin-bottom:8px">${place.ADDR || ''}</p>
+              <button id="viewMoreBtn" style="font-size:12px;color:blue;cursor:pointer;text-decoration:underline">더보기</button>
+            </div>
+          `;
+
           const infoWindow = new naver.maps.InfoWindow({
-            content: `<div style="padding:5px;min-width:100px;color:black">${place.TITLE}</div>`,
+            content: infoWindowContent,
             borderWidth: 1,
             disableAnchor: true,
           });
 
           infoWindow.open(mapInstanceRef.current!, marker);
           seletedInfoWindowRef.current = infoWindow;
+
+          // 더보기 버튼 클릭 이벤트 (setTimeout으로 DOM 생성 후 이벤트 등록)
+          setTimeout(() => {
+            const viewMoreBtn = document.getElementById('viewMoreBtn');
+            if (viewMoreBtn) {
+              viewMoreBtn.addEventListener('click', () => {
+                openSidebar(place);
+              });
+            }
+          }, 100);
         });
 
-        return marker;
+        return { marker, placeData: place };
       } catch (e) {
         console.error('Failed to create marker', e, place);
         return null;
       }
     },
-    [isNaverReady],
+    [isNaverReady, openSidebar],
   );
 
   // totalPlaceData가 변경될 때만 장소 마커 참조 변경
@@ -143,16 +194,16 @@ export const Map = () => {
     if (!mapInstanceRef.current || !isNaverReady) return;
 
     // 기존 장소 마커 제거
-    placeMarkersRef.current.forEach((marker) => {
+    totalMarkerPlacePairRef.current.forEach(({ marker }) => {
       marker.setMap(null);
     });
-    placeMarkersRef.current = [];
+    totalMarkerPlacePairRef.current = [];
 
     // 새 장소 마커 생성
     totalPlaceData.forEach((place) => {
-      const marker = createMarker(place);
-      if (marker !== null) {
-        placeMarkersRef.current.push(marker);
+      const markerWithData = createMarker(place);
+      if (markerWithData !== null) {
+        totalMarkerPlacePairRef.current.push(markerWithData);
       }
     });
 
@@ -166,28 +217,12 @@ export const Map = () => {
     const { naver } = window;
 
     // 현위치 버튼 추가
-    const locationBtnHtml = `
-    <button class="location-btn" style="
-      width: 32px; 
-      height: 32px; 
-      margin-right: 10px;
-      background: white; 
-      border: 1px solid #ddd; 
-      border-radius: 2px; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
-      cursor: pointer;
-    ">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.94 11A8 8 0 0 0 12.62 4.06a8.22 8.22 0 0 0-8.56 7.94"></path>
-        <path d="M12 19.96A8.23 8.23 0 0 0 20.25 12"></path>
-        <path d="M4.06 12a8.23 8.23 0 0 0 8.19 7.94"></path>
-      </svg>
-    </button>
-  `;
+    const locationBtnHtml = renderToString(
+      <button className="mr-2.5 flex h-8 w-8 cursor-pointer items-center justify-center border border-gray-600 bg-white shadow transition-colors duration-150 hover:bg-gray-50 active:border-blue-600 active:bg-blue-500 active:text-white">
+        <MdOutlineMyLocation className="h-5 w-5 text-gray-600 active:text-white" />
+      </button>,
+    );
+
     const currentLocationButton = new naver.maps.CustomControl(locationBtnHtml, {
       position: naver.maps.Position.RIGHT_CENTER,
     });
@@ -196,11 +231,28 @@ export const Map = () => {
     );
     currentLocationButton.setMap(mapInstanceRef.current);
 
+    // 목록보기 버튼 추가
+    const listBtnHtml = renderToString(
+      <button className="mt-2.5 mr-2.5 px-4 py-2 rounded-4xl flex cursor-pointer items-center justify-center border border-gray-600 bg-white shadow transition-colors duration-150 hover:bg-gray-50 active:border-blue-600 active:bg-blue-500 active:text-white">
+        <FaList className="h-4 w-4 text-gray-600 active:text-white" />
+        <span className="text-gray-600">목록보기</span>
+      </button>,
+    );
+
+    const listButton = new naver.maps.CustomControl(listBtnHtml, {
+      position: naver.maps.Position.TOP_CENTER,
+    });
+    naver.maps.Event.addDOMListener(listButton.getElement(), 'click', () => openSidebar());
+    listButton.setMap(mapInstanceRef.current);
+
     // 지도 클릭 이벤트 추가
     mapInstanceRef.current.addListener('click', () => {
       if (seletedInfoWindowRef.current) {
         seletedInfoWindowRef.current.close();
         seletedInfoWindowRef.current = null;
+      }
+      if (isSidebarOpen) {
+        closeSidebar();
       }
     });
 
@@ -208,7 +260,7 @@ export const Map = () => {
     mapInstanceRef.current.addListener('idle', () => {
       updateVisibleMarkers();
     });
-  }, [getCurrentLocation, updateVisibleMarkers]);
+  }, [getCurrentLocation, updateVisibleMarkers, openSidebar, closeSidebar]);
 
   // 지도 초기화 실행
   useEffect(() => {
@@ -235,14 +287,23 @@ export const Map = () => {
   }, [isNaverReady, getCurrentLocation, initMapElements]);
 
   return (
-    <div className="map-container">
-      {isScriptLoading && <div className="loading-indicator">지도 로딩 중...</div>}
-
-      <div ref={mapDivRef} className={`h-[400px] w-full ${isNaverReady ? 'block' : 'hidden'}`} />
-
+    <div className="map-container relative">
+      {isScriptLoading && <div>지도 로딩 중...</div>}
+      {isLocating && <div>현재 위치 확인 중...</div>}
       {scriptError && <div className="error-message">지도 로드 실패</div>}
 
-      {isLocating && <div className="locating-indicator">현재 위치 확인 중...</div>}
+      <div ref={mapDivRef} className={`h-[400px] w-full ${isNaverReady ? 'block' : 'hidden'}`} />
+      {isLocating && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex-col justify-center align-middle">
+          <ImSpinner2 className="h-10 w-10 animate-spin text-violet-600" />
+        </div>
+      )}
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={closeSidebar}
+        places={visiblePlacesData}
+        selectedPlace={selectedPlace}
+      />
     </div>
   );
 };

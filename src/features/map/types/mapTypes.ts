@@ -16,3 +16,8 @@ export interface ViewNightSpot {
 export interface ApiResponse {
   viewNightSpot: ViewNightSpotResult;
 }
+
+export interface MarkerWithData {
+  marker: naver.maps.Marker;
+  placeData: ViewNightSpot;
+}
