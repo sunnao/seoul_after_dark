@@ -1,3 +1,5 @@
+import DetailPlaceContext from '@/features/map/components/DetailPlaceContext';
+import SimplePlaceCard from '@/features/map/components/SimplePlaceCard';
 import { ViewNightSpot } from '@/features/map/types/mapTypes';
 import { useEffect, useRef } from 'react';
 
@@ -53,34 +55,11 @@ const Sidebar = ({ isOpen, onClose, places, selectedPlace }: SidebarProps) => {
         {/* 사이드바 내용 */}
         <div className="h-[calc(100%-60px)] overflow-y-auto p-4">
           {selectedPlace ? (
-            // 선택된 장소 상세 정보
-            <div>
-              <h4 className="mb-2 text-xl font-bold">{selectedPlace.TITLE}</h4>
-              <p className="mb-2 text-gray-400">{selectedPlace.ADDR}</p>
-              {selectedPlace.TEL_NO && (
-                <p className="mb-2 text-gray-400">전화: {selectedPlace.TEL_NO}</p>
-              )}
-              {selectedPlace.URL && (
-                <p className="mb-2 truncate text-blue-500">
-                  <span className="mb-2 text-gray-400">홈페이지: </span>
-                  <a href={selectedPlace.URL} target="_blank" rel="noopener noreferrer">
-                    {selectedPlace.URL}
-                  </a>
-                </p>
-              )}
-              {/* <p className="mt-4 text-gray-700">{selectedPlace.CONTENTS}</p> */}
-            </div>
+            <DetailPlaceContext selectedPlace={selectedPlace} />
           ) : (
-            // 장소 목록
             <ul className="space-y-2">
               {places.map((place, index) => (
-                <li
-                  key={index}
-                  className="cursor-pointer rounded-lg border p-3 hover:bg-gray-50 hover:text-zinc-800"
-                >
-                  <h4 className="font-medium">{place.TITLE}</h4>
-                  <p className="truncate text-sm text-gray-500">{place.ADDR}</p>
-                </li>
+                <SimplePlaceCard index={index} place={place} />
               ))}
             </ul>
           )}
@@ -91,3 +70,4 @@ const Sidebar = ({ isOpen, onClose, places, selectedPlace }: SidebarProps) => {
 };
 
 export default Sidebar;
+

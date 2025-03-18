@@ -151,32 +151,21 @@ export const Map = () => {
 
         // 마커 클릭 이벤트
         marker.addListener('click', () => {
-          // 인포윈도우 내용 생성 (더보기 버튼 포함)
+          // 인포윈도우 내용 생성
           const infoWindowContent = `
-            <div style="padding:10px;min-width:200px;color:black">
-              <h3 style="font-weight:bold;margin-bottom:5px">${place.TITLE}</h3>
-              <button id="viewMoreBtn" style="font-size:12px;color:blue;cursor:pointer;text-decoration:underline">더보기</button>
-            </div>
-          `;
+            <div class="p-2.5 max-w-[250px] text-zinc-900 border-zinc-900 border-1 rounded shadow">
+              <h4 class="font-bold text-sm">${place.TITLE}</h4>
+            </div>`;
 
           const infoWindow = new naver.maps.InfoWindow({
             content: infoWindowContent,
-            borderWidth: 1,
+            borderWidth: 0,
             disableAnchor: true,
           });
 
           infoWindow.open(mapInstanceRef.current!, marker);
+          openSidebar(place);
           seletedInfoWindowRef.current = infoWindow;
-
-          // 더보기 버튼 클릭 이벤트 (setTimeout으로 DOM 생성 후 이벤트 등록)
-          setTimeout(() => {
-            const viewMoreBtn = document.getElementById('viewMoreBtn');
-            if (viewMoreBtn) {
-              viewMoreBtn.addEventListener('click', () => {
-                openSidebar(place);
-              });
-            }
-          }, 100);
         });
 
         return { marker, placeData: place };
@@ -232,7 +221,7 @@ export const Map = () => {
 
     // 목록보기 버튼 추가
     const listBtnHtml = renderToString(
-      <button className="mt-2.5 mr-2.5 px-4 py-2 rounded-4xl flex cursor-pointer items-center justify-center border border-gray-600 bg-white shadow transition-colors duration-150 hover:bg-gray-50 active:border-blue-600 active:bg-blue-500 active:text-white">
+      <button className="mt-2.5 mr-2.5 flex cursor-pointer items-center justify-center rounded-4xl border border-gray-600 bg-white px-4 py-2 shadow transition-colors duration-150 hover:bg-gray-50 active:border-blue-600 active:bg-blue-500 active:text-white">
         <FaList className="h-4 w-4 text-gray-600 active:text-white" />
         <span className="text-gray-600">목록보기</span>
       </button>,
@@ -291,7 +280,7 @@ export const Map = () => {
       {isLocating && <div>현재 위치 확인 중...</div>}
       {scriptError && <div className="error-message">지도 로드 실패</div>}
 
-      <div ref={mapDivRef} className={`h-[400px] w-full ${isNaverReady ? 'block' : 'hidden'}`} />
+      <div ref={mapDivRef} className={`h-[800px] w-full ${isNaverReady ? 'block' : 'hidden'}`} />
       {isLocating && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex-col justify-center align-middle">
           <ImSpinner2 className="h-10 w-10 animate-spin text-violet-600" />
