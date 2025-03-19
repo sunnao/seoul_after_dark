@@ -48,7 +48,7 @@ const Sidebar = ({ isOpen, onClose, places, selectedPlace }: SidebarProps) => {
             {selectedPlace ? selectedPlace.TITLE : '장소 목록'}
           </h3>
           <button onClick={onClose} className="p-2">
-            <IoClose className="h-5 w-5 hover:text-violet-600" />
+            <IoClose className="h-5 w-5" />
           </button>
         </div>
 
@@ -59,7 +59,7 @@ const Sidebar = ({ isOpen, onClose, places, selectedPlace }: SidebarProps) => {
           ) : (
             <ul className="space-y-2">
               {places.map((place, index) => (
-                <SimplePlaceCard index={index} place={place} />
+                <SimplePlaceCard key={index} place={place} />
               ))}
             </ul>
           )}

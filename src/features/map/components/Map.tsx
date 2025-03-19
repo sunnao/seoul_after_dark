@@ -11,7 +11,6 @@ import { FaList } from 'react-icons/fa';
 import { renderToString } from 'react-dom/server';
 import Sidebar from '@/features/map/components/Sidebar';
 
-
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<naver.maps.Map | null>(null);
@@ -145,7 +144,6 @@ export const Map = () => {
         const marker = new naver.maps.Marker({
           position: new naver.maps.LatLng(Number(place.LA), Number(place.LO)),
           map: undefined,
-          title: place.TITLE,
           zIndex: 50,
         });
 
@@ -153,7 +151,7 @@ export const Map = () => {
         marker.addListener('click', () => {
           // 인포윈도우 내용 생성
           const infoWindowContent = `
-            <div class="p-2.5 max-w-[250px] text-zinc-900 border-zinc-900 border-1 rounded shadow">
+            <div id="infoWindow" class="p-2.5 max-w-[250px] text-zinc-900 border-zinc-900 border-1 rounded shadow cursor-pointer">
               <h4 class="font-bold text-sm">${place.TITLE}</h4>
             </div>`;
 
@@ -162,6 +160,13 @@ export const Map = () => {
             borderWidth: 0,
             disableAnchor: true,
           });
+
+          setTimeout(() => {
+            const infoWindow = document.getElementById('infoWindow');
+            if (infoWindow) {
+              infoWindow.addEventListener('click', () => openSidebar(place));
+            }
+          }, 100);
 
           infoWindow.open(mapInstanceRef.current!, marker);
           openSidebar(place);
@@ -275,12 +280,11 @@ export const Map = () => {
   }, [isNaverReady, getCurrentLocation, initMapElements]);
 
   return (
-    <div className="map-container relative">
+    <div className="map-container relative h-full border-2 border-amber-200">
       {isScriptLoading && <div>지도 로딩 중...</div>}
-      {isLocating && <div>현재 위치 확인 중...</div>}
       {scriptError && <div className="error-message">지도 로드 실패</div>}
 
-      <div ref={mapDivRef} className={`h-[800px] w-full ${isNaverReady ? 'block' : 'hidden'}`} />
+      <div ref={mapDivRef} className={`h-full w-full ${isNaverReady ? 'block' : 'hidden'}`} />
       {isLocating && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex-col justify-center align-middle">
           <ImSpinner2 className="h-10 w-10 animate-spin text-violet-600" />
