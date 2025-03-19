@@ -40,7 +40,7 @@ const DetailPlaceContext = ({ selectedPlace }: DetailPlaceProps) => {
           </p>
         )}
         {selectedPlace.CONTENTS && (
-          <p className="mt-4 text-gray-400">{parse(selectedPlace.CONTENTS)}</p>
+          <div className="mt-4 text-gray-400">{parse(selectedPlace.CONTENTS)}</div>
         )}
       </div>
     </>
