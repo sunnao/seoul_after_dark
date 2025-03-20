@@ -35,7 +35,7 @@ export const Header = () => {
         <div className="flex-none">
           <ul className="menu menu-horizontal px-1">
             <li>{user ? <a onClick={logout}>로그아웃</a> : <Link to="/login">로그인</Link>}</li>
-            <li>
+            {user && <li>
 							<span>{user?.username} 님</span>
               {/* <details>
                 <summary>Parent</summary>
@@ -48,7 +48,7 @@ export const Header = () => {
                   </li>
                 </ul>
               </details> */}
-            </li>
+            </li>}
           </ul>
         </div>
       </div>
