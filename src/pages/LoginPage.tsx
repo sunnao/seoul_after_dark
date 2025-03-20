@@ -39,9 +39,6 @@ export const LoginPage = () => {
         {error && (
           <div className="mb-3 alert flex w-70 justify-between alert-error">
             <span>{error}</span>
-            <Link to="/login" className="link font-bold link-hover">
-              로그인
-            </Link>
           </div>
         )}
 
