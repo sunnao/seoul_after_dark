@@ -1,6 +1,9 @@
-import { Link } from "react-router-dom";
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 export const Header = () => {
+  const { user, logout } = useAuth();
+
   return (
     <header>
       <div className="navbar bg-base-100 shadow-sm">
@@ -31,11 +34,10 @@ export const Header = () => {
         </div>
         <div className="flex-none">
           <ul className="menu menu-horizontal px-1">
+            <li>{user ? <a onClick={logout}>로그아웃</a> : <Link to="/login">로그인</Link>}</li>
             <li>
-              <Link to="/login">로그인</Link>
-            </li>
-            {/* <li>
-              <details>
+							<span>{user?.username} 님</span>
+              {/* <details>
                 <summary>Parent</summary>
                 <ul className="rounded-t-none bg-base-100 p-2">
                   <li>
@@ -45,8 +47,8 @@ export const Header = () => {
                     <a>Link 2</a>
                   </li>
                 </ul>
-              </details>
-            </li> */}
+              </details> */}
+            </li>
           </ul>
         </div>
       </div>

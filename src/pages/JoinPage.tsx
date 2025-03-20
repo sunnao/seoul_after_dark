@@ -1,27 +1,25 @@
-import { logoImage } from '@/constants/images';
 import { Link, useNavigate } from 'react-router-dom';
-
-import { FiMail } from 'react-icons/fi';
-import { RiLockPasswordLine } from 'react-icons/ri';
-import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useState } from 'react';
+import { logoImage } from '@/constants/images';
 
-export const LoginPage = () => {
+export const JoinPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-	const [error, setError] = useState('');
+  const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
-	
-	const handleSubmit = (e: React.FormEvent) => {
+  const { join } = useAuth();
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const result = login(email, password);
+    const username = email.split('@')[0];
+    const result = join(username, email, password);
 
-    if (result) {
+    if (result.success) {
       navigate('/');
     } else {
-      setError('이메일 또는 비밀번호가 틀렸습니다.');
+      setError(result.message);
     }
     console.log('e', e);
   };
@@ -48,8 +46,8 @@ export const LoginPage = () => {
         <form onSubmit={handleSubmit}>
           <fieldset className="fieldset w-70">
             {/* email */}
+            <label>이메일</label>
             <label className="validator input">
-              <FiMail className="h-[1em] opacity-50" />
               <input
                 type="email"
                 placeholder="mail@site.com"
@@ -60,25 +58,23 @@ export const LoginPage = () => {
             <div className="validator-hint hidden">이메일 양식이 올바르지 않습니다.</div>
 
             {/* password */}
-            <label className="validator input mt-3">
-              <RiLockPasswordLine className="h-[1em] opacity-50" />
+            <label className="mt-3">비밀번호</label>
+            <label className="validator input">
               <input
                 type="password"
-                required
                 placeholder="Password"
                 minLength={6}
                 title="6자 이상 입력해주세요"
                 onChange={(e) => setPassword(e.target.value)}
+                required
               />
             </label>
             <div className="validator-hint hidden">6자 이상 입력해주세요.</div>
-            <div className="flex justify-between">
-              {/* <a className="link link-hover">비밀번호 찾기</a> */}
-              <Link to="/join" className="link link-hover">
-                회원가입
-              </Link>
-            </div>
-            <button className="btn mt-4 btn-neutral">로그인</button>
+            <div className="text-end"></div>
+
+            <button type="submit" className="btn mt-4 btn-neutral">
+              회원가입
+            </button>
           </fieldset>
         </form>
       </div>

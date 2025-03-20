@@ -280,7 +280,7 @@ export const Map = () => {
   }, [isNaverReady, getCurrentLocation, initMapElements]);
 
   return (
-    <div className="map-container relative h-full border-2 border-amber-200">
+    <div className="map-container relative h-full">
       {isScriptLoading && <div>지도 로딩 중...</div>}
       {scriptError && <div className="error-message">지도 로드 실패</div>}
 
