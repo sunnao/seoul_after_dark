@@ -6,7 +6,8 @@ export const useScript = (src: string): [boolean, ErrorEvent | null] => {
 
   useEffect(() => {
     let script: HTMLScriptElement | null = document.querySelector(`script[src="${src}"]`);
-
+    const alreadyLoaded = script !== null;
+    
     // script가 없을 때에만 실행 (중복 방지)
     if (!script) {
       script = document.createElement('script');
@@ -21,12 +22,14 @@ export const useScript = (src: string): [boolean, ErrorEvent | null] => {
       console.error(err.message);
     };
 
-    // script 요소에서 불러오기가 완료되면 발생하는 'load' 이벤트
-    script.addEventListener('load', handleLoad);
-    // script 요소에서 에러가 생기면 발생하는 'error' 이벤트
-    script.addEventListener('error', handleError);
-
-    document.body.appendChild(script);
+    // 이미 로드된 스크립트인 경우 바로 로딩 완료 상태로 설정
+    if (alreadyLoaded) {
+      setLoading(false);
+    } else {
+      script.addEventListener('load', handleLoad);
+      script.addEventListener('error', handleError);
+      document.body.appendChild(script);
+    }
 
     return () => {
       script.removeEventListener('load', handleLoad);
