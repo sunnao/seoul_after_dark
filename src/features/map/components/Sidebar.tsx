@@ -4,15 +4,17 @@ import { ViewNightSpot } from '@/features/map/types/mapTypes';
 import { useEffect, useRef } from 'react';
 
 import { IoClose } from 'react-icons/io5';
+import { IoChevronBackOutline } from 'react-icons/io5';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   places: ViewNightSpot[];
   selectedPlace: ViewNightSpot | null;
+  onPlaceSelect: (place: ViewNightSpot | null) => void;
 }
 
-const Sidebar = ({ isOpen, onClose, places, selectedPlace }: SidebarProps) => {
+const Sidebar = ({ isOpen, onClose, places, selectedPlace, onPlaceSelect }: SidebarProps) => {
   const sidebarRef = useRef<HTMLDivElement | null>(null);
 
   // 사이드바 외부 클릭 시 닫기
@@ -45,7 +47,13 @@ const Sidebar = ({ isOpen, onClose, places, selectedPlace }: SidebarProps) => {
         {/* 사이드바 헤더 */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-zinc-800 p-4">
           <h3 className="text-lg font-semibold">
-            {selectedPlace ? selectedPlace.TITLE : '장소 목록'}
+            {selectedPlace ? (
+              <div onClick={()=>onPlaceSelect(null)}>
+                <IoChevronBackOutline />
+              </div>
+            ) : (
+              '장소 목록'
+            )}
           </h3>
           <button onClick={onClose} className="p-2">
             <IoClose className="h-5 w-5" />
@@ -59,7 +67,9 @@ const Sidebar = ({ isOpen, onClose, places, selectedPlace }: SidebarProps) => {
           ) : (
             <ul className="space-y-2">
               {places.map((place, index) => (
-                <SimplePlaceCard key={index} place={place} />
+                <div onClick={() => onPlaceSelect(place)}>
+                  <SimplePlaceCard key={index} place={place} />
+                </div>
               ))}
             </ul>
           )}
@@ -70,4 +80,3 @@ const Sidebar = ({ isOpen, onClose, places, selectedPlace }: SidebarProps) => {
 };
 
 export default Sidebar;
-

@@ -25,6 +25,10 @@ export const Map = () => {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [selectedPlace, setSelectedPlace] = useState<ViewNightSpot | null>(null);
+  
+  const handlePlaceSelect = (place: ViewNightSpot | null) => {
+    setSelectedPlace(place);
+  };
 
   const [isScriptLoading, scriptError] = useScript(
     `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${
@@ -204,7 +208,7 @@ export const Map = () => {
   }, [isNaverReady, totalPlaceData, createMarker, updateVisibleMarkers]);
 
   // 지도 초기화 함수
-  const initMapElements = useCallback(() => {
+  const initMapElements = () => {
     if (!mapInstanceRef.current) return;
 
     const { naver } = window;
@@ -253,7 +257,7 @@ export const Map = () => {
     mapInstanceRef.current.addListener('idle', () => {
       updateVisibleMarkers();
     });
-  }, [getCurrentLocation, updateVisibleMarkers, openSidebar, closeSidebar]);
+  };
 
   // 지도 초기화 실행
   useEffect(() => {
@@ -277,7 +281,7 @@ export const Map = () => {
         getCurrentLocation();
       });
     }
-  }, [isNaverReady, getCurrentLocation, initMapElements]);
+  }, [isNaverReady, getCurrentLocation, currentLocation]);
 
   return (
     <div className="map-container relative h-full">
@@ -285,7 +289,7 @@ export const Map = () => {
       {scriptError && <div className="error-message">지도 로드 실패</div>}
 
       <div ref={mapDivRef} className={`h-full w-full ${isNaverReady ? 'block' : 'hidden'}`} />
-      {isLocating && (
+      {(isLocating || isLoadingPlaces) && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex-col justify-center align-middle">
           <ImSpinner2 className="h-10 w-10 animate-spin text-violet-600" />
         </div>
@@ -295,6 +299,7 @@ export const Map = () => {
         onClose={closeSidebar}
         places={visiblePlacesData}
         selectedPlace={selectedPlace}
+        onPlaceSelect={handlePlaceSelect}
       />
     </div>
   );
