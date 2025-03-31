@@ -40,7 +40,7 @@ export const Map = () => {
 
   // 전체 장소 정보 가져오기 (API 호출) 함수 - useCallback으로 메모이제이션
   const fetchViewNightSpotData = useCallback(async () => {
-    if (!isLoadingPlaces) setIsLoadingPlaces(true);
+    setIsLoadingPlaces(true);
 
     try {
       // prettier-ignore
@@ -100,6 +100,7 @@ export const Map = () => {
       currentMarkerRef.current.setMap(null);
       currentMarkerRef.current = null;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNaverReady, currentLocation]);
 
   // 현위치 마커 업데이트
@@ -281,6 +282,7 @@ export const Map = () => {
         getCurrentLocation();
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNaverReady, getCurrentLocation, currentLocation]);
 
   return (
