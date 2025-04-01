@@ -7,7 +7,7 @@ interface SimplePlaceProps {
 const SimplePlaceCard = ({ place }: SimplePlaceProps) => {
   return (
     <li
-      className="cursor-pointer rounded-lg border p-3 hover:bg-gray-50 hover:text-zinc-800"
+      className="cursor-pointer rounded-lg border p-3 hover:bg-base-content hover:text-base-100"
     >
       <h4 className="font-medium">{place.TITLE}</h4>
       <p className="truncate text-sm text-gray-500">{place.ADDR}</p>

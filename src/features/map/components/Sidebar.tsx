@@ -34,21 +34,29 @@ const Sidebar = ({ isOpen, onClose, places, selectedPlace, onPlaceSelect }: Side
     };
   }, [isOpen, onClose]);
 
+  // 애니메이션 종료 후 hidden 클래스 적용
+  const handleTransitionEnd = () => {
+    if (!isOpen && sidebarRef.current) {
+      sidebarRef.current.classList.add('hidden');
+    }
+  };
+
   return (
     <>
       <div
         ref={sidebarRef}
-        className={`fixed right-0 bottom-0 left-0 z-100 max-h-full w-full overflow-y-auto rounded-t-xl bg-zinc-800 shadow-lg transition-transform duration-300 ease-in-out md:top-0 md:right-auto md:left-0 md:w-[400px] md:overflow-y-visible ${
+        className={`fixed right-0 bottom-0 left-0 z-100 max-h-full w-full overflow-y-auto rounded-t-xl bg-base-200 shadow-lg transition-transform duration-300 ease-in-out md:top-0 md:right-auto md:left-0 md:w-[400px] md:overflow-y-visible ${
           isOpen
-            ? 'translate-y-0 md:translate-x-0 md:translate-y-0'
+            ? 'translate-y-0 md:translate-x-0'
             : 'translate-y-full md:translate-x-[-400px] md:translate-y-0'
         }`}
+        onTransitionEnd={handleTransitionEnd}
       >
         {/* 사이드바 헤더 */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-zinc-800 p-4">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-base-200 p-4">
           <h3 className="text-lg font-semibold">
             {selectedPlace ? (
-              <div onClick={()=>onPlaceSelect(null)}>
+              <div onClick={() => onPlaceSelect(null)}>
                 <IoChevronBackOutline />
               </div>
             ) : (

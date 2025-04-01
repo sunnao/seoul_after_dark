@@ -17,17 +17,17 @@ const DetailPlaceContext = ({ selectedPlace }: DetailPlaceProps) => {
         <h4 className="mb-2 text-xl font-bold">{selectedPlace.TITLE}</h4>
         <p className="mb-2 text-gray-400">{selectedPlace.ADDR}</p>
         {selectedPlace.OPERATING_TIME && (
-          <p className="mb-2 text-gray-300">
+          <p className="mb-2 hover:text-base-content">
             운영시간: <span className="mb-2 text-gray-400">{selectedPlace.OPERATING_TIME}</span>
           </p>
         )}
         {selectedPlace.TEL_NO && (
-          <p className="mb-2 text-gray-300">
+          <p className="mb-2 hover:text-base-content">
             전화: <span className="mb-2 text-gray-400">{selectedPlace.TEL_NO}</span>
           </p>
         )}
         {selectedPlace.URL && (
-          <p className="mb-2 text-gray-300">
+          <p className="mb-2 hover:text-base-content">
             홈페이지:{' '}
             <a
               className="break-all text-blue-500"
