@@ -2,26 +2,33 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 import { logoImage } from '@/constants/images';
+import { useForm } from 'react-hook-form';
 
 export const JoinPage = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [apiError, setApiError] = useState('');
   const navigate = useNavigate();
   const { join } = useAuth();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const username = email.split('@')[0];
-    const result = join(username, email, password);
+  const onSubmit = (data: { email: string; password: string }) => {
+    const username = data.email.split('@')[0];
+    const result = join(username, data.email, data.password);
 
     if (result.success) {
+      setApiError('');
       navigate('/');
     } else {
-      setError(result.message);
+      setApiError(result.message);
     }
-    console.log('e', e);
   };
 
   return (
@@ -34,45 +41,59 @@ export const JoinPage = () => {
           </div>
         </Link>
 
-        {error && (
+        {apiError && (
           <div className="mb-3 alert flex w-70 justify-between alert-error">
-            <span>{error}</span>
+            <span>{apiError}</span>
             <Link to="/login" className="link font-bold link-hover">
               로그인
             </Link>
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <fieldset className="fieldset w-70">
+        <form noValidate onSubmit={handleSubmit(onSubmit)} className="w-70 space-y-4">
+          <fieldset className="fieldset">
             {/* email */}
-            <label>이메일</label>
-            <label className="validator input">
-              <input
-                type="email"
-                placeholder="mail@site.com"
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </label>
-            <div className="validator-hint hidden">이메일 양식이 올바르지 않습니다.</div>
+            <label htmlFor="email">이메일</label>
+            <input
+              id="email"
+              type="email"
+              placeholder="mail@site.com"
+              className={`input ${errors.email ? 'input-error' : ''}`}
+              {...register('email', {
+                required: '이메일을 입력해주세요',
+                pattern: {
+                  value: /\S+@\S+\.\S+/,
+                  message: '이메일 양식이 올바르지 않습니다',
+                },
+              })}
+            />
+            {errors.email && <label className="text-error">{errors.email.message}</label>}
 
             {/* password */}
-            <label className="mt-3">비밀번호</label>
-            <label className="validator input">
-              <input
-                type="password"
-                placeholder="Password"
-                minLength={6}
-                title="6자 이상 입력해주세요"
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </label>
-            <div className="validator-hint hidden">6자 이상 입력해주세요.</div>
-            <div className="text-end"></div>
 
-            <button type="submit" className="btn mt-4 btn-neutral">
+            <label htmlFor="password">
+              <span>비밀번호</span>
+            </label>
+            <input
+              id="password"
+              type="password"
+              placeholder="******"
+              className={`input ${errors.password ? 'input-error' : ''}`}
+              {...register('password', {
+                required: '비밀번호를 입력해주세요',
+                minLength: {
+                  value: 6,
+                  message: '6자 이상 입력해주세요',
+                },
+              })}
+            />
+            {errors.password && (
+              <label>
+                <span className="text-error">{errors.password.message}</span>
+              </label>
+            )}
+
+            <button type="submit" className="btn mt-3 btn-neutral">
               회원가입
             </button>
           </fieldset>

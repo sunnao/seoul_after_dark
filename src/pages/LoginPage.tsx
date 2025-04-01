@@ -5,25 +5,36 @@ import { FiMail } from 'react-icons/fi';
 import { RiLockPasswordLine } from 'react-icons/ri';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useForm } from 'react-hook-form';
+
+interface LoginFormValues {
+  email: string;
+  password: string;
+}
 
 export const LoginPage = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-	const [error, setError] = useState('');
+  const [apiError, setApiError] = useState('');
   const navigate = useNavigate();
   const { login } = useAuth();
-	
-	const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
 
-    const result = login(email, password);
+  const onSubmit = (data: LoginFormValues) => {
+    const result = login(data.email, data.password);
 
     if (result) {
       navigate('/');
     } else {
-      setError('이메일 또는 비밀번호가 틀렸습니다.');
+      setApiError('이메일 또는 비밀번호가 틀렸습니다.');
     }
-    console.log('e', e);
   };
 
   return (
@@ -36,45 +47,59 @@ export const LoginPage = () => {
           </div>
         </Link>
 
-        {error && (
+        {apiError && (
           <div className="mb-3 alert flex w-70 justify-between alert-error">
-            <span>{error}</span>
+            <span>{apiError}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <fieldset className="fieldset w-70">
+        <form noValidate onSubmit={handleSubmit(onSubmit)} className="w-70">
+          <fieldset className="fieldset">
             {/* email */}
-            <label className="validator input">
+            <label className={`input w-full ${errors.email ? 'input-error' : ''}`}>
               <FiMail className="h-[1em] opacity-50" />
               <input
                 type="email"
                 placeholder="mail@site.com"
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                {...register('email', {
+                  required: '이메일을 입력해주세요',
+                  pattern: {
+                    value: /\S+@\S+\.\S+/,
+                    message: '이메일 양식이 올바르지 않습니다',
+                  },
+                })}
               />
             </label>
-            <div className="validator-hint hidden">이메일 양식이 올바르지 않습니다.</div>
+            {errors.email && <label className="text-error">{errors.email.message}</label>}
 
             {/* password */}
-            <label className="validator input mt-3">
+            <label className={`input mt-3 w-full ${errors.password ? 'input-error' : ''}`}>
               <RiLockPasswordLine className="h-[1em] opacity-50" />
               <input
                 type="password"
-                required
-                placeholder="Password"
-                minLength={6}
-                title="6자 이상 입력해주세요"
-                onChange={(e) => setPassword(e.target.value)}
+                placeholder="******"
+                {...register('password', {
+                  required: '비밀번호를 입력해주세요',
+                  minLength: {
+                    value: 6,
+                    message: '6자 이상 입력해주세요',
+                  },
+                })}
               />
             </label>
-            <div className="validator-hint hidden">6자 이상 입력해주세요.</div>
-            <div className="flex justify-between">
+            {errors.password && (
+              <label>
+                <span className="text-error">{errors.password.message}</span>
+              </label>
+            )}
+
+            <div className="mt-4 flex justify-between">
               {/* <a className="link link-hover">비밀번호 찾기</a> */}
-              <Link to="/join" className="link link-hover">
+              <Link to="/join" className="link text-sm link-hover">
                 회원가입
               </Link>
             </div>
+
             <button className="btn mt-4 btn-neutral">로그인</button>
           </fieldset>
         </form>
