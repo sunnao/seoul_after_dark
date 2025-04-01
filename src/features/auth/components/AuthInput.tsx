@@ -9,6 +9,7 @@ interface AuthInputProps {
   registration: UseFormRegisterReturn;
   error?: FieldError;
   disabled?: boolean;
+  className?: string;
 }
 
 export const AuthInput = ({
@@ -20,6 +21,7 @@ export const AuthInput = ({
   registration,
   error,
   disabled,
+  className,
 }: AuthInputProps) => {
   return (
     <>
@@ -35,6 +37,7 @@ export const AuthInput = ({
           onBlur={registration.onBlur}
           ref={registration.ref}
           disabled={disabled}
+          className={className}
         />
       </label>
       {error && <label className="text-error">{error.message}</label>}

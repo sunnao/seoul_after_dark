@@ -37,10 +37,10 @@ export const useAuth = () => {
   const logout = () => {
     localStorage.removeItem('loggedInUser');
     setUser(null);
-    navigate('/login');
+    navigate('/');
   };
 
-  const join = (email: string, password: string, name?: string) => {
+  const join = (email: string, password: string, name: string) => {
     const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
 
     if (users.find((storagedUser) => storagedUser.email === email)) {
@@ -55,5 +55,24 @@ export const useAuth = () => {
     return { success: true, message: '회원가입 완료' };
   };
 
-  return { user, login, logout, isLoginLoading, join };
+  const updateUser = (email: string, password: string, name: string) => {
+    const username = name || email.split('@')[0];
+    const newUserData: User = {
+      email,
+      password,
+      username,
+    };
+    const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
+    const newUsers = users.map(
+      (storagedUser) => storagedUser.email === email ? newUserData : storagedUser
+    );
+    if (newUsers.length === 0) {
+      return { success: false, message: '회원정보 수정에 실패했습니다.' };
+    } 
+    localStorage.setItem('loggedInUser', JSON.stringify(newUserData));
+    localStorage.setItem('users', JSON.stringify(newUsers));
+    return { success: true, message: '회원정보 수정 완료' };
+  };
+
+  return { user, login, logout, isLoginLoading, join, updateUser };
 };

@@ -76,7 +76,9 @@ export const JoinForm = () => {
             id="username"
             type="text"
             placeholder="이름"
-            registration={register('username')}
+            registration={register('username', {
+              setValueAs: (value) => value.trim(),
+            })}
           />
 
           <button type="submit" className="btn mt-3 btn-neutral">
