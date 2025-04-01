@@ -30,19 +30,25 @@ export const ProfileForm = ({ isEditMode, toogleEditMode }: ProfileFormProps) =>
   });
 
   useEffect(() => {
-    if (user) {
+    if (user ) {
       reset({
         email: user.email,
         username: user.username,
+        password: '',
+        passwordCheck: '',
       });
     }
-  }, [user, reset]);
+  }, [user, reset, isEditMode]);
 
   const onSubmit = (data: { email: string; password: string; username: string }) => {
     const result = updateUser(data.email, data.password, data.username);
     setUpdateResult(result);
-    setTimeout(() => {
+    
+    if (result.success) {
       toogleEditMode();
+    }
+    
+    setTimeout(() => {
       setUpdateResult({
         success: false,
         message: '',
@@ -52,7 +58,7 @@ export const ProfileForm = ({ isEditMode, toogleEditMode }: ProfileFormProps) =>
 
   return (
     <>
-      {updateResult.message && isEditMode && (
+      {updateResult.message && (
         <div
           className={`mb-3 alert flex w-70 justify-between alert-error ${updateResult.success ? 'alert-success' : 'alert-error'}`}
         >
@@ -60,7 +66,7 @@ export const ProfileForm = ({ isEditMode, toogleEditMode }: ProfileFormProps) =>
         </div>
       )}
 
-      <form noValidate onSubmit={handleSubmit(onSubmit)} className="w-70 space-y-4">
+      <form noValidate onSubmit={handleSubmit(onSubmit)} className="w-70">
         <fieldset className="fieldset">
           <AuthInput
             label="이름"
@@ -80,22 +86,23 @@ export const ProfileForm = ({ isEditMode, toogleEditMode }: ProfileFormProps) =>
             disabled={true}
             registration={register('email')}
           />
+
+          <AuthInput
+            label="비밀번호"
+            type="password"
+            placeholder=""
+            error={errors.password}
+            disabled={!isEditMode}
+            registration={register('password', {
+              required: '비밀번호를 입력해주세요',
+              minLength: {
+                value: 6,
+                message: '6자 이상 입력해주세요',
+              },
+            })}
+          />
           {isEditMode && (
             <>
-              <AuthInput
-                label="비밀번호"
-                type="password"
-                placeholder=""
-                error={errors.password}
-                disabled={!isEditMode}
-                registration={register('password', {
-                  required: '비밀번호를 입력해주세요',
-                  minLength: {
-                    value: 6,
-                    message: '6자 이상 입력해주세요',
-                  },
-                })}
-              />
               <AuthInput
                 label="비밀번호 확인"
                 type="password"

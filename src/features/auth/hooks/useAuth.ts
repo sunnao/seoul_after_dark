@@ -17,15 +17,15 @@ export const useAuth = () => {
 
   const login = (email: string, password: string) => {
     const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
-    const matcheduser = users.find(
-      (storagedUser) => storagedUser.email === email && storagedUser.password === password,
+    const matchedUser = users.find(
+      (storedUser) => storedUser.email === email && storedUser.password === password,
     );
 
-    if (matcheduser) {
+    if (matchedUser) {
       const loggedInUser: User = {
-        username: matcheduser.username,
-        email: matcheduser.email,
-        password: matcheduser.password,
+        username: matchedUser.username,
+        email: matchedUser.email,
+        password: matchedUser.password,
       };
       localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
       setUser(loggedInUser);
@@ -43,7 +43,7 @@ export const useAuth = () => {
   const join = (email: string, password: string, name: string) => {
     const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
 
-    if (users.find((storagedUser) => storagedUser.email === email)) {
+    if (users.find((storedUser) => storedUser.email === email)) {
       return { success: false, message: '이미 등록된 이메일입니다.' };
     }
 
@@ -57,21 +57,20 @@ export const useAuth = () => {
 
   const updateUser = (email: string, password: string, name: string) => {
     const username = name || email.split('@')[0];
-    const newUserData: User = {
-      email,
-      password,
-      username,
-    };
+    const newUserData: User = { email, password, username };
+
     const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
-    const newUsers = users.map(
-      (storagedUser) => storagedUser.email === email ? newUserData : storagedUser
-    );
-    if (newUsers.length === 0) {
-      return { success: false, message: '회원정보 수정에 실패했습니다.' };
-    } 
-    localStorage.setItem('loggedInUser', JSON.stringify(newUserData));
-    localStorage.setItem('users', JSON.stringify(newUsers));
-    return { success: true, message: '회원정보 수정 완료' };
+
+    for (let i = 0; i < users.length; i++) {
+      if (users[i].email === email) {
+        users[i] = newUserData;
+        localStorage.setItem('loggedInUser', JSON.stringify(newUserData));
+        localStorage.setItem('users', JSON.stringify(users));
+        setUser(newUserData)
+        return { success: true, message: '회원정보 수정 완료' };
+      }
+    }
+    return { success: false, message: '회원정보 수정에 실패했습니다.' };
   };
 
   return { user, login, logout, isLoginLoading, join, updateUser };
