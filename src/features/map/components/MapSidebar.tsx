@@ -2,9 +2,9 @@ import DetailPlaceContext from '@/features/map/components/DetailPlaceContext';
 import SimplePlaceCard from '@/features/map/components/SimplePlaceCard';
 import { ViewNightSpot } from '@/features/map/types/mapTypes';
 import { useEffect, useRef } from 'react';
+import { FaList } from 'react-icons/fa6';
 
 import { IoClose } from 'react-icons/io5';
-import { IoChevronBackOutline } from 'react-icons/io5';
 
 interface MapSidebarProps {
   isOpen: boolean;
@@ -63,7 +63,7 @@ export const MapSidebar = ({
           <h3 className="text-lg font-semibold">
             {selectedPlace ? (
               <div onClick={() => onPlaceSelect(null)}>
-                <IoChevronBackOutline />
+                <FaList className="h-4 w-4" />
               </div>
             ) : (
               '장소 목록'

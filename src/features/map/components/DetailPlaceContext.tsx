@@ -14,7 +14,10 @@ const DetailPlaceContext = ({ selectedPlace }: DetailPlaceProps) => {
         </p>
       </div>
       <div className="text-start">
-        <h4 className="mb-2 text-xl font-bold">{selectedPlace.TITLE}</h4>
+        <span className="mb-1 badge badge-neutral">{selectedPlace.SUBJECT_CD}</span>
+        <div className="flex items-center">
+          <h4 className="mb-2 text-xl font-bold">{selectedPlace.TITLE}</h4>
+        </div>
         <p className="mb-2 text-gray-400">{selectedPlace.ADDR}</p>
         {selectedPlace.OPERATING_TIME && (
           <p className="mb-2 hover:text-base-content">

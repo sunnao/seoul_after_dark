@@ -8,8 +8,14 @@ import { ApiResponse, MarkerWithData, ViewNightSpot } from '@features/map/types/
 import { MdOutlineMyLocation } from 'react-icons/md';
 import { ImSpinner2 } from 'react-icons/im';
 import { FaList } from 'react-icons/fa';
+import { PiBridgeFill } from 'react-icons/pi';
 import { renderToString } from 'react-dom/server';
 import { MapSidebar } from '@/features/map/components/MapSidebar';
+import { GiDoubleStreetLights } from 'react-icons/gi';
+import { TbCameraMoon } from 'react-icons/tb';
+import { CgTrees } from 'react-icons/cg';
+import { HiOutlineBuildingLibrary } from 'react-icons/hi2';
+import { BsMoonStarsFill } from 'react-icons/bs';
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
@@ -204,12 +210,45 @@ export const Map = () => {
       if (!mapInstanceRef.current || !isNaverReady || !place.LA || !place.LO) return null;
 
       const { naver } = window;
+      
 
       try {
+        // 마커 아이콘 생성
+        const createMarkerIcon = (subject: string) => {
+          
+          const setMark = () => {
+            switch (subject) {
+              case '문화/체육':
+              return { icon: <HiOutlineBuildingLibrary />, color: 'purple' };
+              case '공원/광장':
+                return { icon: <CgTrees />, color: 'green' };
+              case '공공시설':
+                return { icon: <PiBridgeFill />, color: 'indigo' };
+              case '가로/마을':
+                return { icon: <GiDoubleStreetLights />, color: 'amber' };
+              case 'custom':
+                return { icon: <BsMoonStarsFill />, color: 'sky' };
+                default:
+                  return { icon: <TbCameraMoon />, color: 'sky' };
+            }
+          };
+          
+          return {
+            content: renderToString(
+              <div
+                className={`flex border-${setMark().color}-400 h-7 w-7 items-center justify-center rounded-full border bg-${setMark().color}-800 shadow-lg`}
+              >
+                <span className="text-[20px] text-white">{setMark().icon}</span>
+              </div>,
+            ),
+            anchor: new naver.maps.Point(20, 20),
+          };
+        };
+
         const marker = new naver.maps.Marker({
           position: new naver.maps.LatLng(Number(place.LA), Number(place.LO)),
           map: undefined,
-          zIndex: 50,
+          icon: createMarkerIcon(place.SUBJECT_CD),
         });
 
         // 마커 클릭 이벤트
