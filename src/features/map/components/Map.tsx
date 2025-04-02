@@ -9,7 +9,7 @@ import { MdOutlineMyLocation } from 'react-icons/md';
 import { ImSpinner2 } from 'react-icons/im';
 import { FaList } from 'react-icons/fa';
 import { renderToString } from 'react-dom/server';
-import Sidebar from '@/features/map/components/Sidebar';
+import Sidebar from '@/features/map/components/MapSidebar';
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);

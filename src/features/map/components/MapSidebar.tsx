@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react';
 import { IoClose } from 'react-icons/io5';
 import { IoChevronBackOutline } from 'react-icons/io5';
 
-interface SidebarProps {
+interface MapSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   places: ViewNightSpot[];
@@ -14,7 +14,7 @@ interface SidebarProps {
   onPlaceSelect: (place: ViewNightSpot | null) => void;
 }
 
-const Sidebar = ({ isOpen, onClose, places, selectedPlace, onPlaceSelect }: SidebarProps) => {
+const MapSidebar = ({ isOpen, onClose, places, selectedPlace, onPlaceSelect }: MapSidebarProps) => {
   const sidebarRef = useRef<HTMLDivElement | null>(null);
 
   // 사이드바 외부 클릭 시 닫기
@@ -87,4 +87,4 @@ const Sidebar = ({ isOpen, onClose, places, selectedPlace, onPlaceSelect }: Side
   );
 };
 
-export default Sidebar;
+export default MapSidebar;
