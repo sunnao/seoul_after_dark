@@ -14,7 +14,13 @@ interface MapSidebarProps {
   onPlaceSelect: (place: ViewNightSpot | null) => void;
 }
 
-const MapSidebar = ({ isOpen, onClose, places, selectedPlace, onPlaceSelect }: MapSidebarProps) => {
+export const MapSidebar = ({
+  isOpen,
+  onClose,
+  places,
+  selectedPlace,
+  onPlaceSelect,
+}: MapSidebarProps) => {
   const sidebarRef = useRef<HTMLDivElement | null>(null);
 
   // 사이드바 외부 클릭 시 닫기
@@ -75,8 +81,8 @@ const MapSidebar = ({ isOpen, onClose, places, selectedPlace, onPlaceSelect }: M
           ) : (
             <ul className="space-y-2">
               {places.map((place, index) => (
-                <div onClick={() => onPlaceSelect(place)}>
-                  <SimplePlaceCard key={index} place={place} />
+                <div key={index} onClick={() => onPlaceSelect(place)}>
+                  <SimplePlaceCard place={place} />
                 </div>
               ))}
             </ul>
@@ -86,5 +92,3 @@ const MapSidebar = ({ isOpen, onClose, places, selectedPlace, onPlaceSelect }: M
     </>
   );
 };
-
-export default MapSidebar;

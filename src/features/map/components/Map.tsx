@@ -9,7 +9,7 @@ import { MdOutlineMyLocation } from 'react-icons/md';
 import { ImSpinner2 } from 'react-icons/im';
 import { FaList } from 'react-icons/fa';
 import { renderToString } from 'react-dom/server';
-import Sidebar from '@/features/map/components/MapSidebar';
+import { MapSidebar } from '@/features/map/components/MapSidebar';
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
@@ -22,13 +22,12 @@ export const Map = () => {
 
   const totalMarkerPlacePairRef = useRef<MarkerWithData[]>([]);
   const seletedInfoWindowRef = useRef<naver.maps.InfoWindow | null>(null);
+  const selectedMarkerPlacePairRef = useRef<MarkerWithData | null>(null);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [selectedPlace, setSelectedPlace] = useState<ViewNightSpot | null>(null);
-  
-  const handlePlaceSelect = (place: ViewNightSpot | null) => {
-    setSelectedPlace(place);
-  };
+  const previousZoomRef = useRef<number | null>(null);
+  const previousCenterRef = useRef<naver.maps.CoordLiteral | null>(null);
 
   const [isScriptLoading, scriptError] = useScript(
     `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${
@@ -100,13 +99,33 @@ export const Map = () => {
       currentMarkerRef.current.setMap(null);
       currentMarkerRef.current = null;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNaverReady, currentLocation]);
 
   // 현위치 마커 업데이트
   useEffect(() => {
     updateCurrentLocationMarker();
   }, [updateCurrentLocationMarker]);
+
+  // 선택된 장소로 지도 중심 이동 및 확대
+  const moveMapToPlace = useCallback(() => {
+    if (!mapInstanceRef.current || !isNaverReady || !selectedMarkerPlacePairRef.current) return;
+
+    const { naver } = window;
+    const { placeData } = selectedMarkerPlacePairRef.current;
+    const placePosition = new naver.maps.LatLng(Number(placeData.LA), Number(placeData.LO));
+
+    // 현재 중심/줌 확인
+    if (!previousZoomRef.current && !previousCenterRef.current) {
+      previousZoomRef.current = mapInstanceRef.current.getZoom();
+      previousCenterRef.current = mapInstanceRef.current.getCenter();
+    }
+
+    // 지도 중앙 이동
+    mapInstanceRef.current.morph(placePosition, 17, { duration: 400, easing: 'easeOutCubic' });
+  }, [isNaverReady]);
+  
+  
 
   // 영역에 따라 마커 표시 여부 결정
   const updateVisibleMarkers = useCallback(() => {
@@ -124,20 +143,61 @@ export const Map = () => {
       }
     });
     setVisiblePlacesData(visibleData);
+    
+    previousCenterRef.current = null;
+    previousZoomRef.current = null;
   }, [isNaverReady]);
 
-  // 사이드바 열기 함수
-  const openSidebar = useCallback((place: ViewNightSpot | null = null) => {
-    setSelectedPlace(place);
-    setIsSidebarOpen(true);
-  }, []);
+  const openSidebar = useCallback(
+    (place: ViewNightSpot | null = null) => {
+      console.log('open');
+      setSelectedPlace(place);
+      if (!isSidebarOpen) {
+        setIsSidebarOpen(true);
+      }
+    },
+    [isSidebarOpen],
+  );
 
-  // 사이드바 닫기 함수
   const closeSidebar = useCallback(() => {
-    setIsSidebarOpen(false);
-    // 일정 시간 후 선택된 장소 정보 초기화 (애니메이션 완료 후)
-    // setTimeout(() => setSelectedPlace(null), 300);
-  }, []);
+    console.log('ekegla')
+    if (isSidebarOpen) {
+      setIsSidebarOpen(false);
+    }
+  }, [isSidebarOpen]);
+
+  const handlePlaceSelect = useCallback(
+    (place: ViewNightSpot | null) => {
+      console.log('click', place);
+      setSelectedPlace(place);
+      if (!mapInstanceRef.current) return;
+
+      if (place) {
+        const markerPair = totalMarkerPlacePairRef.current.find(
+          (pair) => pair.placeData.TITLE === place.TITLE && pair.placeData.ADDR === place.ADDR,
+        );
+        if (markerPair) {
+          selectedMarkerPlacePairRef.current = markerPair;
+          moveMapToPlace();
+          setIsSidebarOpen(true);
+        }
+      } else {
+        selectedMarkerPlacePairRef.current = null;
+
+        if (seletedInfoWindowRef.current) {
+          seletedInfoWindowRef.current.close();
+          seletedInfoWindowRef.current = null;
+        }
+        if (previousCenterRef.current && previousZoomRef.current) {
+          mapInstanceRef.current.morph(previousCenterRef.current, previousZoomRef.current, {
+            duration: 400,
+            easing: 'easeOutCubic',
+          });
+        }
+      }
+    },
+    [moveMapToPlace],
+  );
 
   const createMarker = useCallback(
     (place: ViewNightSpot) => {
@@ -154,28 +214,7 @@ export const Map = () => {
 
         // 마커 클릭 이벤트
         marker.addListener('click', () => {
-          // 인포윈도우 내용 생성
-          const infoWindowContent = `
-            <div id="infoWindow" class="p-2.5 max-w-[250px] text-zinc-900 border-zinc-900 border-1 rounded shadow cursor-pointer">
-              <h4 class="font-bold text-sm">${place.TITLE}</h4>
-            </div>`;
-
-          const infoWindow = new naver.maps.InfoWindow({
-            content: infoWindowContent,
-            borderWidth: 0,
-            disableAnchor: true,
-          });
-
-          setTimeout(() => {
-            const infoWindow = document.getElementById('infoWindow');
-            if (infoWindow) {
-              infoWindow.addEventListener('click', () => openSidebar(place));
-            }
-          }, 100);
-
-          infoWindow.open(mapInstanceRef.current!, marker);
-          openSidebar(place);
-          seletedInfoWindowRef.current = infoWindow;
+          handlePlaceSelect(place);
         });
 
         return { marker, placeData: place };
@@ -184,8 +223,40 @@ export const Map = () => {
         return null;
       }
     },
-    [isNaverReady, openSidebar],
+    [isNaverReady, handlePlaceSelect],
   );
+
+  // 선택된 장소에 해당하는 인포윈도우 열기
+  const openInfoWindowForPlace = useCallback(() => {
+    if (!mapInstanceRef.current || !isNaverReady || !selectedMarkerPlacePairRef.current) return;
+
+    const { naver } = window;
+    const { placeData, marker } = selectedMarkerPlacePairRef.current;
+
+    // 인포윈도우 내용 생성
+    const infoWindowContent = `
+            <div id="infoWindow" class="p-2.5 max-w-[250px] text-zinc-900 border-zinc-900 border-1 rounded shadow cursor-pointer">
+              <h4 class="font-bold text-sm">${placeData.TITLE}</h4>
+            </div>`;
+
+    const infoWindow = new naver.maps.InfoWindow({
+      content: infoWindowContent,
+      borderWidth: 0,
+      disableAnchor: true,
+    });
+
+    setTimeout(() => {
+      const infoWindow = document.getElementById('infoWindow');
+      if (infoWindow) {
+        infoWindow.addEventListener('click', () => handlePlaceSelect(placeData));
+      }
+    }, 100);
+
+    if (mapInstanceRef.current) {
+      infoWindow.open(mapInstanceRef.current, marker);
+      seletedInfoWindowRef.current = infoWindow;
+    }
+  }, [isNaverReady, handlePlaceSelect]);
 
   // totalPlaceData가 변경될 때만 장소 마커 참조 변경
   useEffect(() => {
@@ -240,7 +311,16 @@ export const Map = () => {
     const listButton = new naver.maps.CustomControl(listBtnHtml, {
       position: naver.maps.Position.TOP_CENTER,
     });
-    naver.maps.Event.addDOMListener(listButton.getElement(), 'click', () => openSidebar());
+    naver.maps.Event.addDOMListener(listButton.getElement(), 'click', () => {
+      if (seletedInfoWindowRef.current) {
+        seletedInfoWindowRef.current.close();
+        seletedInfoWindowRef.current = null;
+      }
+      if (selectedMarkerPlacePairRef.current) {
+        selectedMarkerPlacePairRef.current = null;
+      }
+      openSidebar(null);
+    });
     listButton.setMap(mapInstanceRef.current);
 
     // 지도 클릭 이벤트 추가
@@ -249,14 +329,21 @@ export const Map = () => {
         seletedInfoWindowRef.current.close();
         seletedInfoWindowRef.current = null;
       }
-      if (isSidebarOpen) {
-        closeSidebar();
+      if (selectedMarkerPlacePairRef.current) {
+        selectedMarkerPlacePairRef.current = null;
       }
+      setSelectedPlace(null);
+      closeSidebar();
     });
 
     // 지도 이동 완료 이벤트 추가
     mapInstanceRef.current.addListener('idle', () => {
-      updateVisibleMarkers();
+      if (selectedMarkerPlacePairRef.current) {
+        // 인포윈도우 열기
+        openInfoWindowForPlace();
+      } else {
+        updateVisibleMarkers();
+      }
     });
   };
 
@@ -282,7 +369,7 @@ export const Map = () => {
         getCurrentLocation();
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNaverReady, getCurrentLocation, currentLocation]);
 
   return (
@@ -296,7 +383,7 @@ export const Map = () => {
           <ImSpinner2 className="h-10 w-10 animate-spin text-violet-600" />
         </div>
       )}
-      <Sidebar
+      <MapSidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
         places={visiblePlacesData}
