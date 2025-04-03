@@ -14,10 +14,10 @@ type SubjectFilter = {
 
 interface FilterChipsProps {
   onFilterChange: (activeFilters: string[]) => void;
+  activeFilters: string[];
 }
 
-export const FilterChips = ({ onFilterChange }: FilterChipsProps) => {
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+export const FilterChips = ({ onFilterChange, activeFilters }: FilterChipsProps) => {
 
   const filters: SubjectFilter[] = [
     {
@@ -53,7 +53,6 @@ export const FilterChips = ({ onFilterChange }: FilterChipsProps) => {
 
   const toggleFilter = (filterId: string) => {
     if (filterId === '전체') {
-      setActiveFilters([]);
       onFilterChange([]);
       return;
     }
@@ -66,12 +65,11 @@ export const FilterChips = ({ onFilterChange }: FilterChipsProps) => {
       newFilters = [...activeFilters, filterId];
     }
 
-    setActiveFilters(newFilters);
     onFilterChange(newFilters);
   };
 
   return (
-    <div className="absolute top-2 right-0 left-0 z-10 mx-auto flex w-[80%] max-w-[600px] flex-wrap items-center justify-center gap-2 rounded-lg bg-white/90 p-3 shadow-md">
+    <div className="max-w-full flex flex-wrap items-center justify-center gap-2 rounded-lg bg-white/90 p-3 shadow-md">
       {filters.map((filter) => (
         <button
           key={filter.id}

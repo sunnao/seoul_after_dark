@@ -7,7 +7,7 @@ import { ApiResponse, MarkerWithData, ViewNightSpot } from '@features/map/types/
 
 import { MdOutlineMyLocation } from 'react-icons/md';
 import { ImSpinner2 } from 'react-icons/im';
-import { FaList } from 'react-icons/fa';
+import { FaList, FaSearch } from 'react-icons/fa';
 import { PiBridgeFill } from 'react-icons/pi';
 import { renderToString } from 'react-dom/server';
 import { MapSidebar } from '@/features/map/components/MapSidebar';
@@ -16,6 +16,7 @@ import { HiOutlineBuildingLibrary } from 'react-icons/hi2';
 import { BsMoonStarsFill } from 'react-icons/bs';
 import { streetLamp } from '@/constants/images';
 import { FilterChips } from '@/features/map/components/FilterChips';
+import { FiFilter } from 'react-icons/fi';
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
@@ -35,6 +36,11 @@ export const Map = () => {
   const [selectedPlace, setSelectedPlace] = useState<ViewNightSpot | null>(null);
   const previousZoomRef = useRef<number | null>(null);
   const previousCenterRef = useRef<naver.maps.CoordLiteral | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'filter' | 'search'>('filter');
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [autoCompleteItems, setAutoCompleteItems] = useState<ViewNightSpot[]>([]);
+  const [isAutoCompleteVisible, setIsAutoCompleteVisible] = useState<boolean>(false);
 
   const [isScriptLoading, scriptError] = useScript(
     `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${
@@ -481,18 +487,193 @@ export const Map = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNaverReady, getCurrentLocation, currentLocation]);
 
+  // 검색 핸들러
+  const handleSearch = useCallback(() => {
+    if (!searchKeyword.trim()) return;
+    setIsAutoCompleteVisible(false);
+
+    // 나머지 검색 로직은 그대로 유지
+    const filteredPlaces = totalPlaceData.filter(
+      (place) => place.TITLE.includes(searchKeyword) || place.ADDR.includes(searchKeyword),
+    );
+
+    totalMarkerPlacePairRef.current.forEach(({ marker, placeData }) => {
+      const isMatch =
+        placeData.TITLE.includes(searchKeyword) || placeData.ADDR.includes(searchKeyword);
+
+      marker.setMap(isMatch ? mapInstanceRef.current : null);
+    });
+
+    setVisiblePlacesData(filteredPlaces);
+  }, [searchKeyword, totalPlaceData]);
+
+  // 검색어 입력 시 자동완성 항목 업데이트
+  const updateAutoComplete = useCallback(
+    (keyword: string) => {
+      if (!keyword.trim() || keyword.length < 2) {
+        setAutoCompleteItems([]);
+        setIsAutoCompleteVisible(false);
+        return;
+      }
+
+      // 일치하는 장소 찾기 (제목 또는 주소에 키워드 포함)
+      const matchedPlaces = totalPlaceData
+        .filter((place) => place.TITLE.includes(keyword) || place.ADDR.includes(keyword))
+        .slice(0, 5); // 최대 5개까지만 표시
+
+      setAutoCompleteItems(matchedPlaces);
+      setIsAutoCompleteVisible(matchedPlaces.length > 0);
+    },
+    [totalPlaceData],
+  );
+
+  // 검색어 변경 핸들러
+  const handleSearchInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newKeyword = e.target.value;
+      setSearchKeyword(newKeyword);
+      updateAutoComplete(newKeyword);
+    },
+    [updateAutoComplete],
+  );
+
+  // 자동완성 항목 선택 핸들러
+  const handleAutoCompleteSelect = useCallback(
+    (place: ViewNightSpot) => {
+      setSearchKeyword(place.TITLE);
+      setIsAutoCompleteVisible(false);
+
+      // 해당 장소로 지도 이동 및 마커 표시
+      handlePlaceSelect(place);
+    },
+    [handlePlaceSelect],
+  );
+
+  // 검색창 외부 클릭 시 자동완성 닫기
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setIsAutoCompleteVisible(false);
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+  
+  const handleTabChange = useCallback(
+    (tab: 'filter' | 'search') => {
+      if (activeTab !== tab) {
+        setActiveTab(tab);
+
+        if (tab === 'search') {
+          setIsAutoCompleteVisible(false);
+        }
+      }
+    },
+    [activeTab],
+  );
+
   return (
     <div className="map-container relative h-full">
       {isScriptLoading && <div>지도 로딩 중...</div>}
       {scriptError && <div className="error-message">지도 로드 실패</div>}
 
       <div ref={mapDivRef} className={`h-full w-full ${isNaverReady ? 'block' : 'hidden'}`} />
-      <FilterChips onFilterChange={handleFilterChange} />
+
+      {isNaverReady && (
+        <div className="absolute top-2 right-0 left-0 z-10 mx-auto flex w-[80%] max-w-[800px] gap-2">
+          {/* 검색 영역 */}
+          <div
+            className={`flex items-center rounded-lg bg-white/90 p-2 shadow-md transition-all duration-300 ease-in-out ${
+              activeTab === 'search' ? 'flex-grow' : 'w-10'
+            }`}
+            onClick={() => activeTab !== 'search' && setActiveTab('search')}
+          >
+            {activeTab === 'search' ? (
+              <>
+                {/* 검색창 */}
+                <div className="flex w-full items-center gap-2">
+                  <FaSearch
+                    className={`h-5 w-5 text-neutral-500 ${activeTab === 'search' && 'ml-3'}`}
+                  />
+                  <div className="relative w-full">
+                    <input
+                      type="text"
+                      placeholder="장소명 또는 주소 검색"
+                      className="w-full border-none bg-transparent focus:outline-none"
+                      value={searchKeyword}
+                      onChange={handleSearchInputChange}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTabChange('search');
+                      }} // 이벤트 버블링 방지
+                    />
+                  </div>
+
+                  <button
+                    className="rounded-full bg-neutral-800 px-4 py-2 text-white"
+                    onClick={handleSearch}
+                  >
+                    <FaSearch className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* 자동완성 */}
+                {isAutoCompleteVisible && autoCompleteItems.length > 0 && (
+                  <div className="absolute top-full right-0 left-0 z-20 mt-1 max-h-60 overflow-y-auto rounded-lg bg-white/95 shadow-lg">
+                    {autoCompleteItems.map((place, index) => (
+                      <div
+                        key={`${place.TITLE}-${index}`}
+                        className="cursor-pointer px-4 py-2 hover:bg-gray-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAutoCompleteSelect(place);
+                        }}
+                      >
+                        <div className="font-medium">{place.TITLE}</div>
+                        <div className="text-sm text-gray-500">{place.ADDR}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <button className="flex h-full w-full items-center justify-center">
+                <FaSearch className="h-5 w-5 text-neutral-500" />
+              </button>
+            )}
+          </div>
+
+          {/* 필터영역 */}
+          <div
+            className={`overflow-hidden rounded-lg bg-white/90 shadow-md transition-all duration-300 ease-in-out ${
+              activeTab === 'filter' ? 'flex-grow' : 'w-10'
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleTabChange('filter');
+            }}
+          >
+            <div className={`${activeTab === 'filter' ? 'block' : 'hidden'}`}>
+              <FilterChips onFilterChange={handleFilterChange} activeFilters={activeFilters} />
+            </div>
+            <div
+              className={`flex h-full min-h-[50px] items-center justify-center p-2 ${activeTab === 'filter' ? 'hidden' : 'block'}`}
+            >
+              <FiFilter className="h-5 w-5 text-neutral-500" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {(isLocating || isLoadingPlaces) && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex-col justify-center align-middle">
           <ImSpinner2 className="h-10 w-10 animate-spin text-violet-600" />
         </div>
       )}
+
       <MapSidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
