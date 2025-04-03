@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { HiOutlineBuildingLibrary } from 'react-icons/hi2';
 import { CgTrees } from 'react-icons/cg';
 import { PiBridgeFill } from 'react-icons/pi';
