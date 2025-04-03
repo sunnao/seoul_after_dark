@@ -11,11 +11,11 @@ import { FaList } from 'react-icons/fa';
 import { PiBridgeFill } from 'react-icons/pi';
 import { renderToString } from 'react-dom/server';
 import { MapSidebar } from '@/features/map/components/MapSidebar';
-import { GiDoubleStreetLights } from 'react-icons/gi';
 import { TbCameraMoon } from 'react-icons/tb';
 import { CgTrees } from 'react-icons/cg';
 import { HiOutlineBuildingLibrary } from 'react-icons/hi2';
 import { BsMoonStarsFill } from 'react-icons/bs';
+import { streetLamp } from '@/constants/images';
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
@@ -128,7 +128,7 @@ export const Map = () => {
     }
 
     // 지도 중앙 이동
-    mapInstanceRef.current.morph(placePosition, 17, { duration: 400, easing: 'easeOutCubic' });
+    mapInstanceRef.current.morph(placePosition, 15, { duration: 200, easing: 'easeOutCubic' });
   }, [isNaverReady]);
 
   // 영역에 따라 마커 표시 여부 결정
@@ -176,12 +176,23 @@ export const Map = () => {
       setSelectedPlace(place);
       if (!mapInstanceRef.current) return;
 
+      // 이전에 선택된 마커가 있으면 원래 크기로 복원
+      if (selectedMarkerPlacePairRef.current) {
+        const { marker } = selectedMarkerPlacePairRef.current;
+        const subject = selectedMarkerPlacePairRef.current.placeData.SUBJECT_CD;
+        marker.setIcon(createMarkerIcon(subject, false));
+        marker.setZIndex(50);
+      }
+
       if (place) {
         const markerPair = totalMarkerPlacePairRef.current.find(
           (pair) => pair.placeData.TITLE === place.TITLE && pair.placeData.ADDR === place.ADDR,
         );
         if (markerPair) {
           selectedMarkerPlacePairRef.current = markerPair;
+          // 선택된 마커 크기 키우기
+          markerPair.marker.setIcon(createMarkerIcon(place.SUBJECT_CD, true));
+          markerPair.marker.setZIndex(1000);
           moveMapToPlace();
           setIsSidebarOpen(true);
         }
@@ -203,6 +214,62 @@ export const Map = () => {
     [moveMapToPlace],
   );
 
+  const createMarkerIcon = useCallback((subject: string, isSelected: boolean = false) => {
+    const { naver } = window;
+
+    const setMark = () => {
+      switch (subject) {
+        case '문화/체육':
+          return {
+            icon: <HiOutlineBuildingLibrary />,
+            borderColor: 'border-purple-300',
+            bgColor: 'bg-purple-800',
+          };
+        case '공원/광장':
+          return {
+            icon: <CgTrees />,
+            bgColor: 'bg-green-800',
+          };
+        case '공공시설':
+          return {
+            icon: <PiBridgeFill />,
+            bgColor: 'bg-blue-800',
+          };
+        case '가로/마을':
+          return {
+            icon: <img src={streetLamp} className={`${isSelected ? 'h-7 w-7' :'h-5 w-5'} invert-[1]`} />,
+            bgColor: 'bg-amber-700',
+          };
+        case 'custom':
+          return {
+            icon: <BsMoonStarsFill />,
+            bgColor: 'bg-sky-800',
+          };
+        default:
+          return {
+            icon: <TbCameraMoon />,
+            borderColor: 'border-sky-400',
+            bgColor: 'bg-sky-800',
+          };
+      }
+    };
+
+    const markerStyle = setMark();
+    const size = isSelected ? 'h-10 w-10' : 'h-7 w-7';
+    const iconSize = isSelected ? 'text-[30px]' : 'text-[20px]';
+
+    return {
+      content: renderToString(
+        <div
+          className={`flex ${size} items-center justify-center rounded-full border border-neutral-300 ${markerStyle.bgColor} shadow-lg ${isSelected ? 'ring-2 ring-white' : ''}`}
+        >
+          <span className={`${iconSize} text-white`}>{markerStyle.icon}</span>
+        </div>,
+      ),
+      anchor: new naver.maps.Point(isSelected ? 24 : 20, isSelected ? 24 : 20),
+    };
+  }, []);
+
   const createMarker = useCallback(
     (place: ViewNightSpot) => {
       if (!mapInstanceRef.current || !isNaverReady || !place.LA || !place.LO) return null;
@@ -210,73 +277,36 @@ export const Map = () => {
       const { naver } = window;
 
       try {
-        // 마커 아이콘 생성
-        const createMarkerIcon = (subject: string) => {
-          
-          const setMark = () => {
-            switch (subject) {
-              case '문화/체육':
-                return {
-                  icon: <HiOutlineBuildingLibrary />,
-                  borderColor: 'border-purple-300',
-                  bgColor: 'bg-purple-800',
-                };
-              case '공원/광장':
-                return {
-                  icon: <CgTrees />,
-                  borderColor: 'border-green-300',
-                  bgColor: 'bg-green-800',
-                };
-              case '공공시설':
-                return {
-                  icon: <PiBridgeFill />,
-                  borderColor: 'border-indigo-400',
-                  bgColor: 'bg-indigo-800',
-                };
-              case '가로/마을':
-                return {
-                  icon: <GiDoubleStreetLights />,
-                  borderColor: 'border-amber-400',
-                  bgColor: 'bg-amber-800',
-                };
-              case 'custom':
-                return {
-                  icon: <BsMoonStarsFill />,
-                  borderColor: 'border-sky-400',
-                  bgColor: 'bg-sky-800',
-                };
-              default:
-                return {
-                  icon: <TbCameraMoon />,
-                  borderColor: 'border-sky-400',
-                  bgColor: 'bg-sky-800',
-                };
-            }
-          };
-
-          const markerStyle = setMark();
-
-          return {
-            content: renderToString(
-              <div
-                className={`flex border-neutral-300 h-7 w-7 items-center justify-center rounded-full border ${markerStyle.bgColor} shadow-lg`}
-              >
-                <span className="text-[20px] text-white">{markerStyle.icon}</span>
-              </div>,
-            ),
-            anchor: new naver.maps.Point(20, 20),
-          };
-        };
+        // 기본 z-index 값 설정 (모든 마커에 공통으로 적용될 값)
+        const defaultZIndex = 50;
 
         const marker = new naver.maps.Marker({
           position: new naver.maps.LatLng(Number(place.LA), Number(place.LO)),
           map: undefined,
-          icon: createMarkerIcon(place.SUBJECT_CD),
+          icon: createMarkerIcon(place.SUBJECT_CD, false),
         });
 
         // 마커 클릭 이벤트
         marker.addListener('click', () => {
           handlePlaceSelect(place);
+        });
+
+        // 마우스 오버 이벤트
+        marker.addListener('mouseover', () => {
+          marker.setZIndex(1001); 
+        });
+
+        // 마우스 아웃 이벤트
+        marker.addListener('mouseout', () => {
+          if (selectedMarkerPlacePairRef.current) {
+            const { placeData } = selectedMarkerPlacePairRef.current;
+            if (placeData.TITLE !== place.TITLE && placeData.ADDR !== place.ADDR) {
+              marker.setZIndex(defaultZIndex);
+            }
+          } else {
+            marker.setZIndex(defaultZIndex);
+          }
+          
         });
 
         return { marker, placeData: place };
@@ -285,7 +315,7 @@ export const Map = () => {
         return null;
       }
     },
-    [isNaverReady, handlePlaceSelect],
+    [isNaverReady, handlePlaceSelect, createMarkerIcon],
   );
 
   // 선택된 장소에 해당하는 인포윈도우 열기
@@ -392,6 +422,10 @@ export const Map = () => {
         seletedInfoWindowRef.current = null;
       }
       if (selectedMarkerPlacePairRef.current) {
+        const { marker } = selectedMarkerPlacePairRef.current;
+        const subject = selectedMarkerPlacePairRef.current.placeData.SUBJECT_CD;
+        marker.setIcon(createMarkerIcon(subject, false));
+        marker.setZIndex(50);
         selectedMarkerPlacePairRef.current = null;
       }
       setSelectedPlace(null);
