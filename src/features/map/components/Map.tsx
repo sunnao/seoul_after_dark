@@ -130,8 +130,6 @@ export const Map = () => {
     // 지도 중앙 이동
     mapInstanceRef.current.morph(placePosition, 17, { duration: 400, easing: 'easeOutCubic' });
   }, [isNaverReady]);
-  
-  
 
   // 영역에 따라 마커 표시 여부 결정
   const updateVisibleMarkers = useCallback(() => {
@@ -149,7 +147,7 @@ export const Map = () => {
       }
     });
     setVisiblePlacesData(visibleData);
-    
+
     previousCenterRef.current = null;
     previousZoomRef.current = null;
   }, [isNaverReady]);
@@ -166,7 +164,7 @@ export const Map = () => {
   );
 
   const closeSidebar = useCallback(() => {
-    console.log('ekegla')
+    console.log('ekegla');
     if (isSidebarOpen) {
       setIsSidebarOpen(false);
     }
@@ -210,7 +208,6 @@ export const Map = () => {
       if (!mapInstanceRef.current || !isNaverReady || !place.LA || !place.LO) return null;
 
       const { naver } = window;
-      
 
       try {
         // 마커 아이콘 생성
@@ -219,26 +216,52 @@ export const Map = () => {
           const setMark = () => {
             switch (subject) {
               case '문화/체육':
-              return { icon: <HiOutlineBuildingLibrary />, color: 'purple' };
+                return {
+                  icon: <HiOutlineBuildingLibrary />,
+                  borderColor: 'border-purple-300',
+                  bgColor: 'bg-purple-800',
+                };
               case '공원/광장':
-                return { icon: <CgTrees />, color: 'green' };
+                return {
+                  icon: <CgTrees />,
+                  borderColor: 'border-green-300',
+                  bgColor: 'bg-green-800',
+                };
               case '공공시설':
-                return { icon: <PiBridgeFill />, color: 'indigo' };
+                return {
+                  icon: <PiBridgeFill />,
+                  borderColor: 'border-indigo-400',
+                  bgColor: 'bg-indigo-800',
+                };
               case '가로/마을':
-                return { icon: <GiDoubleStreetLights />, color: 'amber' };
+                return {
+                  icon: <GiDoubleStreetLights />,
+                  borderColor: 'border-amber-400',
+                  bgColor: 'bg-amber-800',
+                };
               case 'custom':
-                return { icon: <BsMoonStarsFill />, color: 'sky' };
-                default:
-                  return { icon: <TbCameraMoon />, color: 'sky' };
+                return {
+                  icon: <BsMoonStarsFill />,
+                  borderColor: 'border-sky-400',
+                  bgColor: 'bg-sky-800',
+                };
+              default:
+                return {
+                  icon: <TbCameraMoon />,
+                  borderColor: 'border-sky-400',
+                  bgColor: 'bg-sky-800',
+                };
             }
           };
-          
+
+          const markerStyle = setMark();
+
           return {
             content: renderToString(
               <div
-                className={`flex border-${setMark().color}-400 h-7 w-7 items-center justify-center rounded-full border bg-${setMark().color}-800 shadow-lg`}
+                className={`flex border-neutral-300 h-7 w-7 items-center justify-center rounded-full border ${markerStyle.bgColor} shadow-lg`}
               >
-                <span className="text-[20px] text-white">{setMark().icon}</span>
+                <span className="text-[20px] text-white">{markerStyle.icon}</span>
               </div>,
             ),
             anchor: new naver.maps.Point(20, 20),
