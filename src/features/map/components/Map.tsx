@@ -11,11 +11,11 @@ import { FaList } from 'react-icons/fa';
 import { PiBridgeFill } from 'react-icons/pi';
 import { renderToString } from 'react-dom/server';
 import { MapSidebar } from '@/features/map/components/MapSidebar';
-import { TbCameraMoon } from 'react-icons/tb';
 import { CgTrees } from 'react-icons/cg';
 import { HiOutlineBuildingLibrary } from 'react-icons/hi2';
 import { BsMoonStarsFill } from 'react-icons/bs';
 import { streetLamp } from '@/constants/images';
+import { FilterChips } from '@/features/map/components/FilterChips';
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
@@ -25,6 +25,7 @@ export const Map = () => {
   const [totalPlaceData, setTotalPlaceData] = useState<ViewNightSpot[]>([]);
   const [visiblePlacesData, setVisiblePlacesData] = useState<ViewNightSpot[]>([]);
   const [isLoadingPlaces, setIsLoadingPlaces] = useState<boolean>(false);
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
   const totalMarkerPlacePairRef = useRef<MarkerWithData[]>([]);
   const seletedInfoWindowRef = useRef<naver.maps.InfoWindow | null>(null);
@@ -131,7 +132,7 @@ export const Map = () => {
     mapInstanceRef.current.morph(placePosition, 15, { duration: 200, easing: 'easeOutCubic' });
   }, [isNaverReady]);
 
-  // 영역에 따라 마커 표시 여부 결정
+  // 마커 표시 여부 결정 (필터, 영역 내 위치)
   const updateVisibleMarkers = useCallback(() => {
     if (!mapInstanceRef.current || !isNaverReady) return;
 
@@ -140,9 +141,13 @@ export const Map = () => {
 
     totalMarkerPlacePairRef.current.forEach(({ marker, placeData }) => {
       const isInBounds = mapBounds.hasPoint(marker.getPosition());
-      marker.setMap(isInBounds ? mapInstanceRef.current : null);
+      const isPassFilter =
+        activeFilters.length === 0 || activeFilters.includes(placeData.SUBJECT_CD);
+      const shouldShow = isInBounds && isPassFilter;
 
-      if (isInBounds) {
+      marker.setMap(shouldShow ? mapInstanceRef.current : null);
+
+      if (shouldShow) {
         visibleData.push(placeData);
       }
     });
@@ -150,11 +155,10 @@ export const Map = () => {
 
     previousCenterRef.current = null;
     previousZoomRef.current = null;
-  }, [isNaverReady]);
+  }, [isNaverReady, activeFilters]);
 
   const openSidebar = useCallback(
     (place: ViewNightSpot | null = null) => {
-      console.log('open');
       setSelectedPlace(place);
       if (!isSidebarOpen) {
         setIsSidebarOpen(true);
@@ -164,55 +168,10 @@ export const Map = () => {
   );
 
   const closeSidebar = useCallback(() => {
-    console.log('ekegla');
     if (isSidebarOpen) {
       setIsSidebarOpen(false);
     }
   }, [isSidebarOpen]);
-
-  const handlePlaceSelect = useCallback(
-    (place: ViewNightSpot | null) => {
-      console.log('click', place);
-      setSelectedPlace(place);
-      if (!mapInstanceRef.current) return;
-
-      // 이전에 선택된 마커가 있으면 원래 크기로 복원
-      if (selectedMarkerPlacePairRef.current) {
-        const { marker } = selectedMarkerPlacePairRef.current;
-        const subject = selectedMarkerPlacePairRef.current.placeData.SUBJECT_CD;
-        marker.setIcon(createMarkerIcon(subject, false));
-        marker.setZIndex(50);
-      }
-
-      if (place) {
-        const markerPair = totalMarkerPlacePairRef.current.find(
-          (pair) => pair.placeData.TITLE === place.TITLE && pair.placeData.ADDR === place.ADDR,
-        );
-        if (markerPair) {
-          selectedMarkerPlacePairRef.current = markerPair;
-          // 선택된 마커 크기 키우기
-          markerPair.marker.setIcon(createMarkerIcon(place.SUBJECT_CD, true));
-          markerPair.marker.setZIndex(1000);
-          moveMapToPlace();
-          setIsSidebarOpen(true);
-        }
-      } else {
-        selectedMarkerPlacePairRef.current = null;
-
-        if (seletedInfoWindowRef.current) {
-          seletedInfoWindowRef.current.close();
-          seletedInfoWindowRef.current = null;
-        }
-        if (previousCenterRef.current && previousZoomRef.current) {
-          mapInstanceRef.current.morph(previousCenterRef.current, previousZoomRef.current, {
-            duration: 400,
-            easing: 'easeOutCubic',
-          });
-        }
-      }
-    },
-    [moveMapToPlace],
-  );
 
   const createMarkerIcon = useCallback((subject: string, isSelected: boolean = false) => {
     const { naver } = window;
@@ -237,18 +196,17 @@ export const Map = () => {
           };
         case '가로/마을':
           return {
-            icon: <img src={streetLamp} className={`${isSelected ? 'h-7 w-7' :'h-5 w-5'} invert-[1]`} />,
+            icon: (
+              <img
+                src={streetLamp}
+                className={`${isSelected ? 'h-7 w-7' : 'h-5 w-5'} invert-[1]`}
+              />
+            ),
             bgColor: 'bg-amber-700',
-          };
-        case 'custom':
-          return {
-            icon: <BsMoonStarsFill />,
-            bgColor: 'bg-sky-800',
           };
         default:
           return {
-            icon: <TbCameraMoon />,
-            borderColor: 'border-sky-400',
+            icon: <BsMoonStarsFill />,
             bgColor: 'bg-sky-800',
           };
       }
@@ -269,6 +227,50 @@ export const Map = () => {
       anchor: new naver.maps.Point(isSelected ? 24 : 20, isSelected ? 24 : 20),
     };
   }, []);
+
+  const handlePlaceSelect = useCallback(
+    (place: ViewNightSpot | null) => {
+      console.log('click', place);
+      setSelectedPlace(place);
+      if (!mapInstanceRef.current) return;
+
+      // 이전에 선택된 마커가 있으면 원래 크기로 복원
+      if (selectedMarkerPlacePairRef.current) {
+        const { marker } = selectedMarkerPlacePairRef.current;
+        const subject = selectedMarkerPlacePairRef.current.placeData.SUBJECT_CD;
+        marker.setIcon(createMarkerIcon(subject, false));
+        marker.setZIndex(50);
+      }
+
+      if (place) {
+        const markerPair = totalMarkerPlacePairRef.current.find(
+          (pair) => pair.placeData.TITLE === place.TITLE && pair.placeData.ADDR === place.ADDR,
+        );
+        if (markerPair) {
+          selectedMarkerPlacePairRef.current = markerPair;
+
+          markerPair.marker.setIcon(createMarkerIcon(place.SUBJECT_CD, true));
+          markerPair.marker.setZIndex(1000);
+          moveMapToPlace();
+          setIsSidebarOpen(true);
+        }
+      } else {
+        selectedMarkerPlacePairRef.current = null;
+
+        if (seletedInfoWindowRef.current) {
+          seletedInfoWindowRef.current.close();
+          seletedInfoWindowRef.current = null;
+        }
+        if (previousCenterRef.current && previousZoomRef.current) {
+          mapInstanceRef.current.morph(previousCenterRef.current, previousZoomRef.current, {
+            duration: 400,
+            easing: 'easeOutCubic',
+          });
+        }
+      }
+    },
+    [moveMapToPlace, createMarkerIcon],
+  );
 
   const createMarker = useCallback(
     (place: ViewNightSpot) => {
@@ -293,7 +295,7 @@ export const Map = () => {
 
         // 마우스 오버 이벤트
         marker.addListener('mouseover', () => {
-          marker.setZIndex(1001); 
+          marker.setZIndex(1001);
         });
 
         // 마우스 아웃 이벤트
@@ -306,7 +308,6 @@ export const Map = () => {
           } else {
             marker.setZIndex(defaultZIndex);
           }
-          
         });
 
         return { marker, placeData: place };
@@ -371,6 +372,14 @@ export const Map = () => {
     updateVisibleMarkers();
   }, [isNaverReady, totalPlaceData, createMarker, updateVisibleMarkers]);
 
+  const handleFilterChange = useCallback(
+    (filters: string[]) => {
+      setActiveFilters(filters);
+      updateVisibleMarkers();
+    },
+    [updateVisibleMarkers],
+  );
+
   // 지도 초기화 함수
   const initMapElements = () => {
     if (!mapInstanceRef.current) return;
@@ -394,16 +403,20 @@ export const Map = () => {
 
     // 목록보기 버튼 추가
     const listBtnHtml = renderToString(
-      <button className="mt-2.5 mr-2.5 flex cursor-pointer items-center justify-center rounded-4xl border border-gray-600 bg-white px-4 py-2 shadow transition-colors duration-150 hover:bg-gray-50 active:border-blue-600 active:bg-blue-500 active:text-white">
-        <FaList className="h-4 w-4 text-gray-600 active:text-white" />
-        <span className="text-gray-600">목록보기</span>
-      </button>,
+      <div className="pb-5">
+        <button className="btn flex cursor-pointer items-center justify-center rounded-4xl border border-neutral-300 bg-neutral-100 px-4 py-2 shadow-lg">
+          <FaList className="h-4 w-4 text-gray-600" />
+          <span className="text-[14px] text-gray-600">목록보기</span>
+        </button>
+      </div>,
     );
 
     const listButton = new naver.maps.CustomControl(listBtnHtml, {
-      position: naver.maps.Position.TOP_CENTER,
+      position: naver.maps.Position.BOTTOM_CENTER,
     });
     naver.maps.Event.addDOMListener(listButton.getElement(), 'click', () => {
+      openSidebar(null);
+      handlePlaceSelect(null);
       if (seletedInfoWindowRef.current) {
         seletedInfoWindowRef.current.close();
         seletedInfoWindowRef.current = null;
@@ -411,7 +424,6 @@ export const Map = () => {
       if (selectedMarkerPlacePairRef.current) {
         selectedMarkerPlacePairRef.current = null;
       }
-      openSidebar(null);
     });
     listButton.setMap(mapInstanceRef.current);
 
@@ -457,6 +469,7 @@ export const Map = () => {
           position: naver.maps.Position.RIGHT_TOP,
           style: naver.maps.ZoomControlStyle.SMALL,
         },
+        padding: { bottom: 50, top: 120, left: 20, right: 20 },
       };
 
       mapInstanceRef.current = new naver.maps.Map(mapDivRef.current, mapOptions);
@@ -474,6 +487,7 @@ export const Map = () => {
       {scriptError && <div className="error-message">지도 로드 실패</div>}
 
       <div ref={mapDivRef} className={`h-full w-full ${isNaverReady ? 'block' : 'hidden'}`} />
+      <FilterChips onFilterChange={handleFilterChange} />
       {(isLocating || isLoadingPlaces) && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex-col justify-center align-middle">
           <ImSpinner2 className="h-10 w-10 animate-spin text-violet-600" />
