@@ -8,13 +8,8 @@ import { ApiResponse, MarkerWithData, ViewNightSpot } from '@features/map/types/
 import { MdOutlineMyLocation } from 'react-icons/md';
 import { ImSpinner2 } from 'react-icons/im';
 import { FaList, FaSearch } from 'react-icons/fa';
-import { PiBridgeFill } from 'react-icons/pi';
 import { renderToString } from 'react-dom/server';
 import { MapSidebar } from '@/features/map/components/MapSidebar';
-import { CgTrees } from 'react-icons/cg';
-import { HiOutlineBuildingLibrary } from 'react-icons/hi2';
-import { BsMoonStarsFill } from 'react-icons/bs';
-import { streetLamp } from '@/constants/images';
 import { FilterChips } from '@/features/map/components/FilterChips';
 import { FiFilter } from 'react-icons/fi';
 import { SUBJECTS } from '@/features/map/constants/subjects';
@@ -187,52 +182,55 @@ export const Map = () => {
   const createMarkerIcon = useCallback((subject: string, isSelected: boolean = false) => {
     const { naver } = window;
 
-    const setMark = () => {
+    const getMarkerStyle = () => {
       switch (subject) {
         case '문화/체육':
           return {
-            icon: <HiOutlineBuildingLibrary />,
-            borderColor: 'border-purple-300',
             bgColor: 'bg-purple-800',
           };
         case '공원/광장':
           return {
-            icon: <CgTrees />,
             bgColor: 'bg-green-800',
           };
         case '공공시설':
           return {
-            icon: <PiBridgeFill />,
             bgColor: 'bg-blue-800',
           };
         case '가로/마을':
           return {
-            icon: (
-              <img
-                src={streetLamp}
-                className={`${isSelected ? 'h-7 w-7' : 'h-5 w-5'} invert-[1]`}
-              />
-            ),
             bgColor: 'bg-amber-700',
+            iconStyle: `${isSelected ? 'h-7 w-7' : 'h-5 w-5'} invert-[1]`,
+          };
+        case '기타':
+          return {
+            bgColor: 'bg-sky-800',
           };
         default:
           return {
-            icon: <BsMoonStarsFill />,
-            bgColor: 'bg-sky-800',
+            bgColor: '',
           };
       }
     };
 
-    const markerStyle = setMark();
+    const currentSubjectForMarker = {
+      ...SUBJECTS.find((ele) => ele.id === subject),
+      ...getMarkerStyle(),
+    };
+
     const size = isSelected ? 'h-10 w-10' : 'h-7 w-7';
     const iconSize = isSelected ? 'text-[30px]' : 'text-[20px]';
+    const selectedBorder = isSelected ? 'ring-2 ring-white' : '';
 
     return {
       content: renderToString(
         <div
-          className={`flex ${size} items-center justify-center rounded-full border border-neutral-300 ${markerStyle.bgColor} shadow-lg ${isSelected ? 'ring-2 ring-white' : ''}`}
+          className={`flex ${size} ${selectedBorder} ${currentSubjectForMarker.bgColor} items-center justify-center rounded-full border border-neutral-300 shadow-lg`}
         >
-          <span className={`${iconSize} text-white`}>{markerStyle.icon}</span>
+          <span
+            className={`${iconSize} ${subject == '가로/마을' && currentSubjectForMarker.iconStyle} text-white`}
+          >
+            {currentSubjectForMarker.icon}
+          </span>
         </div>,
       ),
       anchor: new naver.maps.Point(isSelected ? 24 : 20, isSelected ? 24 : 20),
