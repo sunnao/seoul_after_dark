@@ -17,6 +17,7 @@ import { BsMoonStarsFill } from 'react-icons/bs';
 import { streetLamp } from '@/constants/images';
 import { FilterChips } from '@/features/map/components/FilterChips';
 import { FiFilter } from 'react-icons/fi';
+import { SUBJECTS } from '@/features/map/constants/subjects';
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
@@ -138,6 +139,11 @@ export const Map = () => {
     mapInstanceRef.current.morph(placePosition, 15, { duration: 200, easing: 'easeOutCubic' });
   }, [isNaverReady]);
 
+  useEffect(() => {
+    const filterAll = SUBJECTS.map((filter) => filter.id);
+    setActiveFilters(filterAll);
+  }, []);
+
   // 마커 표시 여부 결정 (필터, 영역 내 위치)
   const updateVisibleMarkers = useCallback(() => {
     if (!mapInstanceRef.current || !isNaverReady) return;
@@ -147,8 +153,7 @@ export const Map = () => {
 
     totalMarkerPlacePairRef.current.forEach(({ marker, placeData }) => {
       const isInBounds = mapBounds.hasPoint(marker.getPosition());
-      const isPassFilter =
-        activeFilters.length === 0 || activeFilters.includes(placeData.SUBJECT_CD);
+      const isPassFilter = activeFilters.includes(placeData.SUBJECT_CD);
       const shouldShow = isInBounds && isPassFilter;
 
       marker.setMap(shouldShow ? mapInstanceRef.current : null);
@@ -560,7 +565,7 @@ export const Map = () => {
       document.removeEventListener('click', handleClickOutside);
     };
   }, []);
-  
+
   const handleTabChange = useCallback(
     (tab: 'filter' | 'search') => {
       if (activeTab !== tab) {

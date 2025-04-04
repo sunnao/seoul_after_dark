@@ -33,3 +33,9 @@ export interface MarkerWithData {
   marker: naver.maps.Marker;
   placeData: ViewNightSpot;
 }
+
+export interface Subject {
+  id: string;
+  name: string;
+  icon?: React.ReactNode;
+}
