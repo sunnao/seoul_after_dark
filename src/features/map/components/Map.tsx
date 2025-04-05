@@ -13,6 +13,7 @@ import { MapSidebar } from '@/features/map/components/MapSidebar';
 import { FilterChips } from '@/features/map/components/FilterChips';
 import { FiFilter } from 'react-icons/fi';
 import { SUBJECTS } from '@/features/map/constants/subjects';
+import parse from 'html-react-parser';
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
@@ -37,6 +38,7 @@ export const Map = () => {
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [autoCompleteItems, setAutoCompleteItems] = useState<ViewNightSpot[]>([]);
   const [isAutoCompleteVisible, setIsAutoCompleteVisible] = useState<boolean>(false);
+  const [isSearchMode, setIsSearchMode] = useState<boolean>(false);
 
   const [isScriptLoading, scriptError] = useScript(
     `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${
@@ -143,6 +145,10 @@ export const Map = () => {
   const updateVisibleMarkers = useCallback(() => {
     if (!mapInstanceRef.current || !isNaverReady) return;
 
+    if (isSearchMode) {
+      return;
+    }
+
     const mapBounds = mapInstanceRef.current.getBounds();
     const visibleData: ViewNightSpot[] = [];
 
@@ -161,7 +167,7 @@ export const Map = () => {
 
     previousCenterRef.current = null;
     previousZoomRef.current = null;
-  }, [isNaverReady, activeFilters]);
+  }, [isNaverReady, activeFilters, isSearchMode]);
 
   const openSidebar = useCallback(
     (place: ViewNightSpot | null = null) => {
@@ -237,19 +243,31 @@ export const Map = () => {
     };
   }, []);
 
+  // 선택된 마커와 인포윈도우 초기화
+  const resetSelectedMarkerAndInfoWindow = useCallback(() => {
+    // 인포윈도우 닫기
+    if (seletedInfoWindowRef.current) {
+      seletedInfoWindowRef.current.close();
+      seletedInfoWindowRef.current = null;
+    }
+
+    // 선택된 마커 스타일 초기화
+    if (selectedMarkerPlacePairRef.current) {
+      const { marker, placeData } = selectedMarkerPlacePairRef.current;
+      marker.setIcon(createMarkerIcon(placeData.SUBJECT_CD, false));
+      marker.setZIndex(50);
+
+      selectedMarkerPlacePairRef.current = null;
+    }
+  }, [createMarkerIcon]);
+
   const handlePlaceSelect = useCallback(
     (place: ViewNightSpot | null) => {
-      console.log('click', place);
-      setSelectedPlace(place);
       if (!mapInstanceRef.current) return;
+      // 기존 선택 초기화
+      resetSelectedMarkerAndInfoWindow();
 
-      // 이전에 선택된 마커가 있으면 원래 크기로 복원
-      if (selectedMarkerPlacePairRef.current) {
-        const { marker } = selectedMarkerPlacePairRef.current;
-        const subject = selectedMarkerPlacePairRef.current.placeData.SUBJECT_CD;
-        marker.setIcon(createMarkerIcon(subject, false));
-        marker.setZIndex(50);
-      }
+      setSelectedPlace(place);
 
       if (place) {
         const markerPair = totalMarkerPlacePairRef.current.find(
@@ -258,18 +276,10 @@ export const Map = () => {
         if (markerPair) {
           selectedMarkerPlacePairRef.current = markerPair;
 
-          markerPair.marker.setIcon(createMarkerIcon(place.SUBJECT_CD, true));
-          markerPair.marker.setZIndex(1000);
           moveMapToPlace();
           setIsSidebarOpen(true);
         }
       } else {
-        selectedMarkerPlacePairRef.current = null;
-
-        if (seletedInfoWindowRef.current) {
-          seletedInfoWindowRef.current.close();
-          seletedInfoWindowRef.current = null;
-        }
         if (previousCenterRef.current && previousZoomRef.current) {
           mapInstanceRef.current.morph(previousCenterRef.current, previousZoomRef.current, {
             duration: 400,
@@ -278,7 +288,7 @@ export const Map = () => {
         }
       }
     },
-    [moveMapToPlace, createMarkerIcon],
+    [moveMapToPlace, resetSelectedMarkerAndInfoWindow],
   );
 
   const createMarker = useCallback(
@@ -389,9 +399,46 @@ export const Map = () => {
     [updateVisibleMarkers],
   );
 
-  // 지도 초기화 함수
-  const initMapElements = () => {
-    if (!mapInstanceRef.current) return;
+  const handleMapIdle = useCallback(() => {
+    if (selectedMarkerPlacePairRef.current) {
+      const { marker, placeData } = selectedMarkerPlacePairRef.current;
+
+      // 마커 스타일 업데이트
+      marker.setIcon(createMarkerIcon(placeData.SUBJECT_CD, true));
+      marker.setZIndex(1000);
+
+      // 인포윈도우 열기
+      openInfoWindowForPlace();
+    } else {
+      updateVisibleMarkers();
+    }
+  }, [createMarkerIcon, openInfoWindowForPlace, updateVisibleMarkers]);
+
+  // 동적으로 변하는 이벤트 리스너는 useEffect로 관리
+  useEffect(() => {
+    if (!mapInstanceRef.current || !isNaverReady) return;
+
+    // 기존 리스너 제거
+    mapInstanceRef.current.clearListeners('idle');
+    mapInstanceRef.current.clearListeners('click');
+
+    // 새 리스너 추가
+    const idleListener = mapInstanceRef.current.addListener('idle', handleMapIdle);
+    const clickListener = mapInstanceRef.current.addListener('click', () => {
+      resetSelectedMarkerAndInfoWindow();
+      setSelectedPlace(null);
+      closeSidebar();
+    });
+
+    // 클린업 함수
+    return () => {
+      naver.maps.Event.removeListener(idleListener);
+      naver.maps.Event.removeListener(clickListener);
+    };
+  }, [isNaverReady, handleMapIdle, resetSelectedMarkerAndInfoWindow, closeSidebar]);
+
+  const initCustomController = useCallback(() => {
+    if (!mapInstanceRef.current || !isNaverReady) return;
 
     const { naver } = window;
 
@@ -435,34 +482,7 @@ export const Map = () => {
       }
     });
     listButton.setMap(mapInstanceRef.current);
-
-    // 지도 클릭 이벤트 추가
-    mapInstanceRef.current.addListener('click', () => {
-      if (seletedInfoWindowRef.current) {
-        seletedInfoWindowRef.current.close();
-        seletedInfoWindowRef.current = null;
-      }
-      if (selectedMarkerPlacePairRef.current) {
-        const { marker } = selectedMarkerPlacePairRef.current;
-        const subject = selectedMarkerPlacePairRef.current.placeData.SUBJECT_CD;
-        marker.setIcon(createMarkerIcon(subject, false));
-        marker.setZIndex(50);
-        selectedMarkerPlacePairRef.current = null;
-      }
-      setSelectedPlace(null);
-      closeSidebar();
-    });
-
-    // 지도 이동 완료 이벤트 추가
-    mapInstanceRef.current.addListener('idle', () => {
-      if (selectedMarkerPlacePairRef.current) {
-        // 인포윈도우 열기
-        openInfoWindowForPlace();
-      } else {
-        updateVisibleMarkers();
-      }
-    });
-  };
+  }, [isNaverReady, getCurrentLocation, handlePlaceSelect, openSidebar]);
 
   // 지도 초기화 실행
   useEffect(() => {
@@ -483,7 +503,7 @@ export const Map = () => {
 
       mapInstanceRef.current = new naver.maps.Map(mapDivRef.current, mapOptions);
       mapInstanceRef.current.addListenerOnce('init', () => {
-        initMapElements();
+        initCustomController();
         getCurrentLocation();
       });
     }
@@ -492,7 +512,10 @@ export const Map = () => {
 
   // 검색 핸들러
   const handleSearch = useCallback(() => {
-    if (!searchKeyword.trim()) return;
+    if (!searchKeyword.trim()) {
+      setIsSearchMode(false);
+      return;
+    }
     setIsAutoCompleteVisible(false);
 
     // 나머지 검색 로직은 그대로 유지
@@ -508,6 +531,7 @@ export const Map = () => {
     });
 
     setVisiblePlacesData(filteredPlaces);
+    setIsSearchMode(true);
   }, [searchKeyword, totalPlaceData]);
 
   // 검색어 입력 시 자동완성 항목 업데이트
@@ -520,14 +544,14 @@ export const Map = () => {
       }
 
       // 일치하는 장소 찾기 (제목 또는 주소에 키워드 포함)
-      const matchedPlaces = totalPlaceData
+      const matchedPlaces = visiblePlacesData
         .filter((place) => place.TITLE.includes(keyword) || place.ADDR.includes(keyword))
         .slice(0, 5); // 최대 5개까지만 표시
 
       setAutoCompleteItems(matchedPlaces);
       setIsAutoCompleteVisible(matchedPlaces.length > 0);
     },
-    [totalPlaceData],
+    [visiblePlacesData],
   );
 
   // 검색어 변경 핸들러
@@ -536,6 +560,9 @@ export const Map = () => {
       const newKeyword = e.target.value;
       setSearchKeyword(newKeyword);
       updateAutoComplete(newKeyword);
+      if (newKeyword.length === 0) {
+        setIsSearchMode(false);
+      }
     },
     [updateAutoComplete],
   );
@@ -602,7 +629,7 @@ export const Map = () => {
                   />
                   <div className="relative w-full">
                     <input
-                      type="text"
+                      type="search"
                       placeholder="장소명 또는 주소 검색"
                       className="w-full border-none bg-transparent focus:outline-none"
                       value={searchKeyword}
@@ -610,6 +637,7 @@ export const Map = () => {
                       onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                       onClick={(e) => {
                         e.stopPropagation();
+                        setIsAutoCompleteVisible(true)
                         handleTabChange('search');
                       }} // 이벤트 버블링 방지
                     />
@@ -629,14 +657,17 @@ export const Map = () => {
                     {autoCompleteItems.map((place, index) => (
                       <div
                         key={`${place.TITLE}-${index}`}
-                        className="cursor-pointer px-4 py-2 hover:bg-gray-100"
+                        className="flex cursor-pointer items-center gap-2 px-4 py-2 hover:bg-gray-100"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAutoCompleteSelect(place);
                         }}
                       >
-                        <div className="font-medium">{place.TITLE}</div>
-                        <div className="text-sm text-gray-500">{place.ADDR}</div>
+                        <div>{parse(createMarkerIcon(place.SUBJECT_CD, false).content)}</div>
+                        <div>
+                          <div className="font-medium">{place.TITLE}</div>
+                          <div className="text-sm text-gray-500">{place.ADDR}</div>
+                        </div>
                       </div>
                     ))}
                   </div>

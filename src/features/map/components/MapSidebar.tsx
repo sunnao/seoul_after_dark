@@ -63,10 +63,10 @@ export const MapSidebar = ({
           <h3 className="text-lg font-semibold">
             {selectedPlace ? (
               <div onClick={() => onPlaceSelect(null)}>
-                <FaList className="h-4 w-4 ml-2" />
+                <FaList className="ml-2 h-4 w-4" />
               </div>
             ) : (
-              '장소 목록'
+              `장소 목록 (${places.length}건)`
             )}
           </h3>
           <button onClick={onClose} className="p-2">
