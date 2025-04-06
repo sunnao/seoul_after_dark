@@ -482,7 +482,14 @@ export const Map = () => {
       }
     });
     listButton.setMap(mapInstanceRef.current);
-  }, [isNaverReady, getCurrentLocation, handlePlaceSelect, openSidebar]);
+
+    mapInstanceRef.current.addListener('idle', handleMapIdle);
+    mapInstanceRef.current.addListener('click', () => {
+      resetSelectedMarkerAndInfoWindow();
+      setSelectedPlace(null);
+      closeSidebar();
+    });
+  }, [isNaverReady, handleMapIdle, getCurrentLocation, openSidebar, handlePlaceSelect, resetSelectedMarkerAndInfoWindow, closeSidebar]);
 
   // 지도 초기화 실행
   useEffect(() => {
