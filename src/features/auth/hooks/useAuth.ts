@@ -1,5 +1,5 @@
 import { User } from '@/features/auth/types/userTypes';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export const useAuth = () => {
@@ -7,13 +7,20 @@ export const useAuth = () => {
   const [isLoginLoading, setIsLoginLoading] = useState<boolean>(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  // 로컬 스토리지에서 최신 유저 정보 가져오기
+  const refreshUser = useCallback(() => {
     const loggedInUser = localStorage.getItem('loggedInUser');
     if (loggedInUser) {
       setUser(JSON.parse(loggedInUser));
+    } else {
+      setUser(null);
     }
-    setIsLoginLoading(false);
   }, []);
+
+  useEffect(() => {
+    refreshUser();
+    setIsLoginLoading(false);
+  }, [refreshUser]);
 
   const login = (email: string, password: string) => {
     const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
@@ -55,23 +62,26 @@ export const useAuth = () => {
     return { success: true, message: '회원가입 완료' };
   };
 
-  const updateUser = (email: string, password: string, name: string) => {
-    const username = name || email.split('@')[0];
-    const newUserData: User = { email, password, username };
+  const updateUser = useCallback(
+    (email: string, password: string, name: string, favoritePlaceIds?: string[]) => {
+      const username = name || email.split('@')[0];
+      const newUserData: User = { email, password, username, favoritePlaceIds };
 
-    const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
+      const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
 
-    for (let i = 0; i < users.length; i++) {
-      if (users[i].email === email) {
-        users[i] = newUserData;
-        localStorage.setItem('loggedInUser', JSON.stringify(newUserData));
-        localStorage.setItem('users', JSON.stringify(users));
-        setUser(newUserData)
-        return { success: true, message: '회원정보 수정 완료' };
+      for (let i = 0; i < users.length; i++) {
+        if (users[i].email === email) {
+          users[i] = newUserData;
+          localStorage.setItem('loggedInUser', JSON.stringify(newUserData));
+          localStorage.setItem('users', JSON.stringify(users));
+          setUser(newUserData); // 상태 직접 업데이트
+          return { success: true, message: '회원정보 수정 완료' };
+        }
       }
-    }
-    return { success: false, message: '회원정보 수정에 실패했습니다.' };
-  };
+      return { success: false, message: '회원정보 수정에 실패했습니다.' };
+    },
+    [],
+  );
 
-  return { user, login, logout, isLoginLoading, join, updateUser };
+  return { user, login, logout, isLoginLoading, join, updateUser, refreshUser };
 };

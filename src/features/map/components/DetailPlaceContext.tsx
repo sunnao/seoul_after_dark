@@ -1,11 +1,47 @@
 import { ViewNightSpot } from '@/features/map/types/mapTypes';
 import parse from 'html-react-parser';
+import { HiOutlineStar, HiStar } from 'react-icons/hi2';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 
 interface DetailPlaceProps {
   selectedPlace: ViewNightSpot;
+  onFavoriteChange: () => void;
 }
 
-const DetailPlaceContext = ({ selectedPlace }: DetailPlaceProps) => {
+const DetailPlaceContext = ({ selectedPlace, onFavoriteChange }: DetailPlaceProps) => {
+  const { user, updateUser } = useAuth();
+
+  const toogleFavorite = (isAddFavoriteMode: boolean) => {
+    if (!user) {
+      alert('로그인이 필요한 기능입니다.');
+      return;
+    }
+
+    const updatedUser = { ...user };
+    if (updatedUser.favoritePlaceIds === undefined) {
+      updatedUser.favoritePlaceIds = [];
+    }
+
+    if (isAddFavoriteMode) {
+      if (!updatedUser.favoritePlaceIds.includes(selectedPlace.ID)) {
+        updatedUser.favoritePlaceIds.push(selectedPlace.ID);
+      }
+    } else {
+      console.log('mm')
+      updatedUser.favoritePlaceIds = updatedUser.favoritePlaceIds.filter(
+        (placeId) => placeId !== selectedPlace.ID,
+      );
+    }
+    
+    updateUser(
+      updatedUser.email,
+      updatedUser.password,
+      updatedUser.username,
+      updatedUser.favoritePlaceIds,
+    );
+    onFavoriteChange();
+  };
+
   return (
     <>
       <div className="text-end">
@@ -15,7 +51,14 @@ const DetailPlaceContext = ({ selectedPlace }: DetailPlaceProps) => {
       </div>
       <div className="text-start">
         <span className="mb-1 badge badge-neutral">{selectedPlace.SUBJECT_CD}</span>
-        <div className="flex items-center">
+        <div className="flex">
+          <div
+            onClick={() => toogleFavorite(!selectedPlace.IS_FAVORITE)}
+            className="cursor-pointer pr-1 text-[27px]"
+          >
+            {selectedPlace.IS_FAVORITE ? <HiStar className="text-amber-400" /> : <HiOutlineStar />}
+          </div>
+
           <h4 className="mb-2 text-xl font-bold">{selectedPlace.TITLE}</h4>
         </div>
         <p className="mb-2 text-gray-400">{selectedPlace.ADDR}</p>

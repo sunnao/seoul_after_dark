@@ -15,11 +15,15 @@ import { FiFilter } from 'react-icons/fi';
 import { SUBJECTS } from '@/features/map/constants/subjects';
 import parse from 'html-react-parser';
 import { TiDelete } from 'react-icons/ti';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { HiStar } from 'react-icons/hi2';
+import { HiOutlineStar } from 'react-icons/hi';
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<naver.maps.Map | null>(null);
   const currentMarkerRef = useRef<naver.maps.Marker | null>(null);
+  const { user, refreshUser } = useAuth();
 
   // 장소 데이터 상태
   const [totalPlaceData, setTotalPlaceData] = useState<ViewNightSpot[]>([]);
@@ -38,6 +42,7 @@ export const Map = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [selectedPlace, setSelectedPlace] = useState<ViewNightSpot | null>(null);
   const [activeTab, setActiveTab] = useState<'filter' | 'search'>('filter');
+  const [isFavoriteMode, setIsFavoriteMode] = useState<boolean>(false);
 
   // 검색 관련 상태
   const [searchKeyword, setSearchKeyword] = useState<string>('');
@@ -76,21 +81,29 @@ export const Map = () => {
 
       if (result.data.viewNightSpot.RESULT.CODE === 'INFO-000') {
         const places = result.data.viewNightSpot.row;
-        setTotalPlaceData(places);
+        const placesAddIdAndFavorite = places.map((place) => ({
+          ...place,
+          ID: `${place.LA}_${place.LO}`,
+          IS_FAVORITE: user
+            ? (user.favoritePlaceIds || []).includes(`${place.LA}_${place.LO}`)
+            : false,
+        }));
+        setTotalPlaceData(placesAddIdAndFavorite);
       }
     } catch (e) {
       console.error(e);
     } finally {
       setIsLoadingPlaces(false);
     }
-  }, []);
+  }, [user]);
 
   // 마커 아이콘 생성 함수
   const createMarkerIcon = useCallback(
-    (subject: string, isSelected: boolean = false) => {
+    (place: ViewNightSpot, isSelected: boolean = false) => {
       if (!isNaverReady || !window.naver) return null;
 
       const { naver } = window;
+      const { IS_FAVORITE: isFavoritePlace, SUBJECT_CD: subject } = place;
 
       const getMarkerStyle = () => {
         switch (subject) {
@@ -121,18 +134,27 @@ export const Map = () => {
       const iconSize = isSelected ? 'text-[30px]' : 'text-[20px]';
       const selectedBorder = isSelected ? 'ring-2 ring-white' : '';
 
-      return {
-        content: renderToString(
-          <div
-            className={`flex ${size} ${selectedBorder} ${currentSubjectForMarker.bgColor} items-center justify-center rounded-full border border-neutral-300 shadow-lg`}
+      const subjectIcon = renderToString(
+        <div
+          className={`flex ${size} ${selectedBorder} ${currentSubjectForMarker.bgColor} items-center justify-center rounded-full border border-neutral-300 shadow-lg`}
+        >
+          <span
+            className={`${iconSize} ${subject == '가로/마을' && currentSubjectForMarker.iconStyle} text-white`}
           >
-            <span
-              className={`${iconSize} ${subject == '가로/마을' && currentSubjectForMarker.iconStyle} text-white`}
-            >
-              {currentSubjectForMarker.icon}
-            </span>
-          </div>,
-        ),
+            {currentSubjectForMarker.icon}
+          </span>
+        </div>,
+      );
+      const favoriteIcon = renderToString(
+        <div
+          className={`flex ${size} ${selectedBorder} items-center justify-center rounded-full border border-neutral-300 bg-amber-400 shadow-lg`}
+        >
+          <HiStar className={`${iconSize} text-white`} />
+        </div>,
+      );
+
+      return {
+        content: isFavoritePlace ? favoriteIcon : subjectIcon,
         anchor: new naver.maps.Point(isSelected ? 24 : 20, isSelected ? 24 : 20),
       };
     },
@@ -203,74 +225,33 @@ export const Map = () => {
     // 선택된 마커 스타일 초기화
     if (selectedMarkerRef.current) {
       const { marker, placeData } = selectedMarkerRef.current;
-      
+
       if (isSearchMode) {
-        marker.setMap(null);
-      } else {
-        const iconConfig = createMarkerIcon(placeData.SUBJECT_CD, false);
-      if (iconConfig) {
-        marker.setIcon(iconConfig);
-      }
-      marker.setZIndex(50);
-      }
+        // marker.setMap(null);
+      } 
+        const iconConfig = createMarkerIcon(placeData, false);
+        if (iconConfig) {
+          marker.setIcon(iconConfig);
+        }
+        marker.setZIndex(50);
+      
       selectedMarkerRef.current = null;
     }
   }, [createMarkerIcon, isSearchMode]);
 
-  // 마커 생성 함수
-  const createMarker = useCallback(
-    (place: ViewNightSpot) => {
-      if (!mapInstanceRef.current || !isNaverReady || !place.LA || !place.LO || !window.naver)
-        return null;
+  // 즐겨찾기 변경 핸들러 - user 정보가 변경될 때마다 totalPlaceData 업데이트
+  const handleFavoriteChange = useCallback(() => {
+    refreshUser();
 
-      const { naver } = window;
+    if (!user) return;
 
-      try {
-        const defaultZIndex = 50;
-        const iconConfig = createMarkerIcon(place.SUBJECT_CD, false);
-
-        if (!iconConfig) return null;
-
-        const marker = new naver.maps.Marker({
-          position: new naver.maps.LatLng(Number(place.LA), Number(place.LO)),
-          map: undefined, // 초기에는 지도에 표시하지 않음
-          icon: iconConfig,
-          zIndex: defaultZIndex,
-        });
-
-        // 마커 데이터 쌍 생성
-        const markerWithData = { marker, placeData: place };
-
-        // 마커 클릭 이벤트
-        marker.addListener('click', () => {
-          handlePlaceSelect(place);
-        });
-
-        // 마우스 오버 이벤트
-        marker.addListener('mouseover', () => {
-          marker.setZIndex(1001);
-        });
-
-        // 마우스 아웃 이벤트
-        marker.addListener('mouseout', () => {
-          if (selectedMarkerRef.current) {
-            const { placeData: selectedData } = selectedMarkerRef.current;
-            if (selectedData.TITLE !== place.TITLE || selectedData.ADDR !== place.ADDR) {
-              marker.setZIndex(defaultZIndex);
-            }
-          } else {
-            marker.setZIndex(defaultZIndex);
-          }
-        });
-
-        return markerWithData;
-      } catch (e) {
-        console.error('Failed to create marker', e, place);
-        return null;
-      }
-    },
-    [isNaverReady, createMarkerIcon],
-  );
+    setTotalPlaceData((prevData) =>
+      prevData.map((place) => ({
+        ...place,
+        IS_FAVORITE: (user.favoritePlaceIds || []).includes(place.ID),
+      })),
+    );
+  }, [refreshUser, user]);
 
   // 선택된 장소에 해당하는 인포윈도우 열기
   const openInfoWindowForPlace = useCallback(() => {
@@ -334,15 +315,13 @@ export const Map = () => {
 
       if (place) {
         // 해당 장소의 마커 찾기
-        const markerPair = markersRef.current.find(
-          (pair) => pair.placeData.TITLE === place.TITLE && pair.placeData.ADDR === place.ADDR,
-        );
+        const markerPair = markersRef.current.find((pair) => pair.placeData.ID === place.ID);
 
         if (markerPair) {
           selectedMarkerRef.current = markerPair;
 
           // 마커 스타일 업데이트
-          const iconConfig = createMarkerIcon(markerPair.placeData.SUBJECT_CD, true);
+          const iconConfig = createMarkerIcon(markerPair.placeData, true);
           if (iconConfig) {
             markerPair.marker.setIcon(iconConfig);
           }
@@ -359,7 +338,7 @@ export const Map = () => {
         // 장소 선택 해제 시 이전 위치로 복귀
         if (previousCenterRef.current && previousZoomRef.current && mapInstanceRef.current) {
           mapInstanceRef.current.morph(previousCenterRef.current, previousZoomRef.current, {
-            duration: 400,
+            duration: 200,
             easing: 'easeOutCubic',
           });
 
@@ -379,6 +358,69 @@ export const Map = () => {
       openInfoWindowForPlace,
       closeSidebar,
     ],
+  );
+
+  // 마커 생성 함수
+  const createMarker = useCallback(
+    (place: ViewNightSpot) => {
+      if (!mapInstanceRef.current || !isNaverReady || !place.LA || !place.LO || !window.naver)
+        return null;
+
+      const { naver } = window;
+
+      try {
+        const isSelectedPlace = selectedMarkerRef.current
+          ? selectedMarkerRef.current.placeData.ID === place.ID
+          : false;
+        const defaultZIndex = 50;
+        const iconConfig = createMarkerIcon(place, isSelectedPlace);
+
+        if (!iconConfig) return null;
+
+        const marker = new naver.maps.Marker({
+          position: new naver.maps.LatLng(Number(place.LA), Number(place.LO)),
+          map: undefined, // 초기에는 지도에 표시하지 않음
+          icon: iconConfig,
+          zIndex: isSelectedPlace ? 1000 : defaultZIndex,
+        });
+
+        // 마커 데이터 쌍 생성
+        const markerWithData = { marker, placeData: place };
+
+        if (isSelectedPlace) {
+          selectedMarkerRef.current = markerWithData;
+          setSelectedPlace(place);
+        }
+
+        // 마커 클릭 이벤트
+        marker.addListener('click', () => {
+          handlePlaceSelect(place);
+        });
+
+        // 마우스 오버 이벤트
+        marker.addListener('mouseover', () => {
+          marker.setZIndex(1001);
+        });
+
+        // 마우스 아웃 이벤트
+        marker.addListener('mouseout', () => {
+          if (selectedMarkerRef.current) {
+            const { placeData: selectedData } = selectedMarkerRef.current;
+            if (selectedData.ID !== place.ID) {
+              marker.setZIndex(defaultZIndex);
+            }
+          } else {
+            marker.setZIndex(defaultZIndex);
+          }
+        });
+
+        return markerWithData;
+      } catch (e) {
+        console.error('Failed to create marker', e, place);
+        return null;
+      }
+    },
+    [isNaverReady, createMarkerIcon, handlePlaceSelect],
   );
 
   // 통합 필터링 함수 - 검색어와 카테고리 필터 적용
@@ -429,10 +471,13 @@ export const Map = () => {
     },
     [isNaverReady],
   );
-  
+
   // 지도 영역 내 보이는 마커 업데이트
   const updateVisibleMarkers = useCallback(() => {
+    console.log('updateVisibleMarkers(지도 영역 내 보이는 마커 업데이트)');
     if (!mapInstanceRef.current || !isNaverReady) return;
+
+    console.log('->updateVisibleMarkers 통과');
 
     const filtered = filterPlaces();
     const visiblePlaces: ViewNightSpot[] = [];
@@ -440,9 +485,9 @@ export const Map = () => {
     if (isSearchMode) {
       // 검색 모드일 때는 필터링된 모든 마커 표시
       markersRef.current.forEach(({ marker, placeData }) => {
-        const shouldShow = filtered.some(
-          (place) => place.TITLE === placeData.TITLE && place.ADDR === placeData.ADDR,
-        );
+        const isPassFavorite = isFavoriteMode ? placeData.IS_FAVORITE : true;
+        
+        const shouldShow = filtered.some((place) => place.ID === placeData.ID) && isPassFavorite;
 
         marker.setMap(shouldShow ? mapInstanceRef.current : null);
 
@@ -461,11 +506,10 @@ export const Map = () => {
 
       markersRef.current.forEach(({ marker, placeData }) => {
         const isInBounds = mapBounds.hasPoint(marker.getPosition());
-        const isPassFilter = filtered.some(
-          (place) => place.TITLE === placeData.TITLE && place.ADDR === placeData.ADDR,
-        );
+        const isPassFilter = filtered.some((place) => place.ID === placeData.ID);
+        const isPassFavorite = isFavoriteMode ? placeData.IS_FAVORITE : true;
 
-        const shouldShow = isInBounds && isPassFilter;
+        const shouldShow = isInBounds && isPassFilter && isPassFavorite;
         marker.setMap(shouldShow ? mapInstanceRef.current : null);
 
         if (shouldShow) {
@@ -474,23 +518,27 @@ export const Map = () => {
       });
     }
 
-    // 선택된 마커가 있으면 항상 보이게 처리
+    
     if (selectedMarkerRef.current) {
       const { marker, placeData } = selectedMarkerRef.current;
-      marker.setMap(mapInstanceRef.current);
+      if (isFavoriteMode) {
+        if (selectedInfoWindowRef.current && !placeData.IS_FAVORITE) {
+          selectedInfoWindowRef.current.close();
+          selectedInfoWindowRef.current = null;
+        }
+      } else {
+        // 선택된 마커가 있으면 항상 보이게 처리
+        marker.setMap(mapInstanceRef.current);
 
-      // 선택된 장소가 목록에 없으면 추가
-      if (
-        !visiblePlaces.some(
-          (place) => place.TITLE === placeData.TITLE && place.ADDR === placeData.ADDR,
-        )
-      ) {
-        visiblePlaces.push(placeData);
+        // 선택된 장소가 목록에 없으면 추가
+        if (!visiblePlaces.some((place) => place.ID === placeData.ID)) {
+          visiblePlaces.push(placeData);
+        }
       }
     }
 
     setVisiblePlacesData(visiblePlaces);
-  }, [isNaverReady, filterPlaces, isSearchMode, fitMapToMarkers]);
+  }, [isNaverReady, filterPlaces, isSearchMode, fitMapToMarkers, isFavoriteMode]);
 
   // 지도 이동 완료 후 핸들러
   const handleMapIdle = useCallback(() => {
@@ -500,7 +548,7 @@ export const Map = () => {
       const { marker, placeData } = selectedMarkerRef.current;
 
       // 마커 스타일 업데이트
-      const iconConfig = createMarkerIcon(placeData.SUBJECT_CD, true);
+      const iconConfig = createMarkerIcon(placeData, true);
       if (iconConfig) {
         marker.setIcon(iconConfig);
       }
@@ -550,18 +598,17 @@ export const Map = () => {
       }
 
       // 일치하는 장소 찾기 (제목 또는 주소에 키워드 포함)
-      const matchedPlaces = totalPlaceData
-        .filter(
-          (place) =>
-            (place.TITLE.includes(keyword) || place.ADDR.includes(keyword)) &&
-            activeFilters.includes(place.SUBJECT_CD),
-        )
-        .slice(0, 5); // 최대 5개까지만 표시
+      const matchedPlaces = totalPlaceData.filter(
+        (place) =>
+          (place.TITLE.includes(keyword) || place.ADDR.includes(keyword)) &&
+          activeFilters.includes(place.SUBJECT_CD) &&
+          (isFavoriteMode ? place.IS_FAVORITE : true),
+      );
 
       setAutoCompleteItems(matchedPlaces);
       setIsAutoCompleteVisible(true);
     },
-    [activeFilters, totalPlaceData],
+    [activeFilters, totalPlaceData, isFavoriteMode],
   );
 
   // 검색어 변경 핸들러
@@ -621,8 +668,8 @@ export const Map = () => {
 
     // 현위치 버튼 추가
     const locationBtnHtml = renderToString(
-      <button className="mr-2.5 flex h-8 w-8 cursor-pointer items-center justify-center border border-gray-600 bg-white shadow transition-colors duration-150 hover:bg-gray-50 active:border-blue-600 active:bg-blue-500 active:text-white">
-        <MdOutlineMyLocation className="h-5 w-5 text-gray-600 active:text-white" />
+      <button className="mr-2.5 flex h-8 w-8 cursor-pointer items-center justify-center border border-gray-600 bg-white text-gray-600 shadow transition-colors duration-150 active:bg-neutral-800 active:text-white">
+        <MdOutlineMyLocation className="h-5 w-5" />
       </button>,
     );
 
@@ -640,7 +687,7 @@ export const Map = () => {
     // 목록보기 버튼 추가
     const listBtnHtml = renderToString(
       <div className="pb-5">
-        <button className="btn flex cursor-pointer items-center justify-center rounded-4xl border border-neutral-300 bg-neutral-100 px-4 py-2 shadow-lg">
+        <button className="btn flex cursor-pointer items-center justify-center rounded-4xl border border-neutral-300 bg-white px-4 py-2 shadow-lg">
           <FaList className="h-4 w-4 text-gray-600" />
           <span className="text-[14px] text-gray-600">목록보기</span>
         </button>
@@ -658,10 +705,16 @@ export const Map = () => {
 
     listButton.setMap(mapInstanceRef.current);
   }, [isNaverReady, getCurrentLocation, openSidebar, handlePlaceSelect]);
+  
+  const onHandleFavoriteMode = useCallback(() => {
+    setIsFavoriteMode(!isFavoriteMode);
+  }, [isFavoriteMode]);
 
   // 총 장소 데이터가 변경될 때 마커 생성
   useEffect(() => {
+    console.log('총 장소 데이터가 변경될 때 마커 생성', isNaverReady, totalPlaceData.length !== 0);
     if (!isNaverReady || totalPlaceData.length === 0) return;
+    console.log('통과->');
 
     // 기존 마커 제거
     markersRef.current.forEach(({ marker }) => {
@@ -700,13 +753,20 @@ export const Map = () => {
       const mapOptions = {
         center: currentLocation ?? defaultCenter,
         mapDataControl: false,
+        logoControlOptions: {
+          position: naver.maps.Position.LEFT_BOTTOM,
+        },
+        scaleControlOptions: {
+          position: naver.maps.Position.LEFT_BOTTOM,
+        },
         zoom: 14,
         zoomControl: true,
         zoomControlOptions: {
-          position: naver.maps.Position.RIGHT_TOP,
+          position: naver.maps.Position.LEFT_BOTTOM,
           style: naver.maps.ZoomControlStyle.SMALL,
         },
         padding: { bottom: 50, top: 120, left: 20, right: 20 },
+        tileDuration: 200,
       };
 
       mapInstanceRef.current = new naver.maps.Map(mapDivRef.current, mapOptions);
@@ -759,127 +819,137 @@ export const Map = () => {
 
   return (
     <div className="map-container relative h-full">
-      <div>{isSearchMode.toString()}</div>
       {isScriptLoading && <div>지도 로딩 중...</div>}
       {scriptError && <div className="error-message">지도 로드 실패</div>}
 
       <div ref={mapDivRef} className={`h-full w-full ${isNaverReady ? 'block' : 'hidden'}`} />
 
       {isNaverReady && (
-        <div className="absolute top-2 right-0 left-0 z-10 mx-auto flex w-[80%] max-w-[800px] gap-2">
-          {/* 검색 영역 */}
-          <div
-            className={`flex items-center rounded-lg bg-white/90 p-2 shadow-md transition-all duration-300 ease-in-out ${
-              activeTab === 'search' ? 'flex-grow' : 'w-10'
-            }`}
-            onClick={() => activeTab !== 'search' && setActiveTab('search')}
-          >
-            {activeTab === 'search' ? (
-              <>
-                {/* 검색창 */}
-                <div className="flex w-full items-center gap-2">
-                  <FaSearch
-                    className={`h-5 w-5 text-neutral-500 ${activeTab === 'search' && 'ml-3'}`}
-                  />
-                  <div className="relative w-full">
-                    <input
-                      type="text"
-                      placeholder="장소명 또는 주소 검색"
-                      className="w-full border-none bg-transparent focus:outline-none"
-                      value={searchKeyword}
-                      onChange={handleSearchInputChange}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleTabChange('search');
-                        if (searchKeyword.length >= 2) {
-                          setIsAutoCompleteVisible(true);
-                        }
-                      }}
+        <>
+          <div className="absolute top-2 right-0 left-0 z-10 mx-auto flex w-[80%] max-w-[800px] gap-2">
+            {/* 검색 영역 */}
+            <div
+              className={`flex items-center rounded-lg bg-white/90 p-2 shadow-md transition-all duration-300 ease-in-out ${
+                activeTab === 'search' ? 'flex-grow' : 'w-10'
+              }`}
+              onClick={() => activeTab !== 'search' && setActiveTab('search')}
+            >
+              {activeTab === 'search' ? (
+                <>
+                  {/* 검색창 */}
+                  <div className="flex w-full items-center gap-2">
+                    <FaSearch
+                      className={`h-5 w-5 text-neutral-500 ${activeTab === 'search' && 'ml-3'}`}
                     />
-                    {searchKeyword && (
-                      <button
-                        className="absolute top-1/2 right-2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700"
+                    <div className="relative w-full">
+                      <input
+                        type="text"
+                        placeholder="장소명 또는 주소 검색"
+                        className="w-full border-none bg-transparent focus:outline-none"
+                        value={searchKeyword}
+                        onChange={handleSearchInputChange}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSearchKeyword('');
-                          setIsSearchMode(false);
-                          setAutoCompleteItems([]);
-                          updateVisibleMarkers();
-                          isInitialSearchFit.current = false;
+                          handleTabChange('search');
+                          if (searchKeyword.length >= 2) {
+                            setIsAutoCompleteVisible(true);
+                          }
                         }}
-                      >
-                        <TiDelete className="text-xl" />
-                      </button>
-                    )}
-                  </div>
-
-                  <button
-                    className="rounded-full bg-neutral-800 px-4 py-2 text-white btn-md"
-                    onClick={handleSearch}
-                  >
-                    <FaSearch className="h-4 w-4" />
-                  </button>
-                </div>
-
-                {/* 자동완성 */}
-                {isAutoCompleteVisible && (
-                  <div className="absolute top-full right-0 left-0 z-20 mt-1 max-h-60 overflow-y-auto rounded-lg bg-white/95 shadow-lg">
-                    {autoCompleteItems.length > 0 ? (
-                      autoCompleteItems.map((place, index) => (
-                        <div
-                          key={`${place.TITLE}-${index}`}
-                          className="flex cursor-pointer items-center gap-2 px-4 py-2 hover:bg-gray-100"
+                      />
+                      {searchKeyword && (
+                        <button
+                          className="absolute top-1/2 right-2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleAutoCompleteSelect(place);
+                            setSearchKeyword('');
+                            setIsSearchMode(false);
+                            setAutoCompleteItems([]);
+                            updateVisibleMarkers();
+                            isInitialSearchFit.current = false;
                           }}
                         >
-                          <div>
-                            {parse(createMarkerIcon(place.SUBJECT_CD, false)?.content || '')}
-                          </div>
-                          <div>
-                            <div className="font-medium">{place.TITLE}</div>
-                            <div className="text-sm text-gray-500">{place.ADDR}</div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="px-4 py-2 text-gray-500">일치하는 장소가 없습니다.</div>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              <button className="flex h-full w-full items-center justify-center">
-                <FaSearch className="h-5 w-5 text-neutral-500" />
-              </button>
-            )}
-          </div>
+                          <TiDelete className="text-xl" />
+                        </button>
+                      )}
+                    </div>
 
-          {/* 필터영역 */}
-          <div
-            className={`overflow-hidden rounded-lg bg-white/90 shadow-md transition-all duration-300 ease-in-out ${
-              activeTab === 'filter' ? 'flex-grow' : 'w-10'
-            }`}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleTabChange('filter');
-            }}
-          >
-            <div className={`${activeTab === 'filter' ? 'block' : 'hidden'}`}>
-              <FilterChips onFilterChange={handleFilterChange} activeFilters={activeFilters} />
-            </div>
-            <div
-              className={`flex h-full min-h-[50px] items-center justify-center p-2 ${activeTab === 'filter' ? 'hidden' : 'block'}`}
-            >
-              <FiFilter className="h-5 w-5 text-neutral-500" />
-              {activeFilters.length !== SUBJECTS.length && (
-                <div className="absolute top-2 right-2 h-2 w-2 rounded bg-violet-600" />
+                    <button
+                      className="rounded-full bg-neutral-800 px-4 py-2 text-white btn-md"
+                      onClick={handleSearch}
+                    >
+                      <FaSearch className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* 자동완성 */}
+                  {isAutoCompleteVisible && (
+                    <div className="absolute top-full right-0 left-0 z-20 mt-1 max-h-60 overflow-y-auto rounded-lg bg-white/95 shadow-lg">
+                      {autoCompleteItems.length > 0 ? (
+                        autoCompleteItems.map((place, index) => (
+                          <div
+                            key={`${place.TITLE}-${index}`}
+                            className="flex cursor-pointer items-center gap-2 px-4 py-2 hover:bg-gray-100"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAutoCompleteSelect(place);
+                            }}
+                          >
+                            <div>{parse(createMarkerIcon(place, false)?.content || '')}</div>
+                            <div>
+                              <div className="font-medium">{place.TITLE}</div>
+                              <div className="text-sm text-gray-500">{place.ADDR}</div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-4 py-2 text-gray-500">일치하는 장소가 없습니다.</div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <button className="flex h-full w-full items-center justify-center">
+                  <FaSearch className="h-5 w-5 text-neutral-500" />
+                </button>
               )}
             </div>
+
+            {/* 필터영역 */}
+            <div
+              className={`overflow-hidden rounded-lg bg-white/90 shadow-md transition-all duration-300 ease-in-out ${
+                activeTab === 'filter' ? 'flex-grow' : 'w-10'
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTabChange('filter');
+              }}
+            >
+              <div className={`${activeTab === 'filter' ? 'block' : 'hidden'}`}>
+                <FilterChips onFilterChange={handleFilterChange} activeFilters={activeFilters} />
+              </div>
+              <div
+                className={`flex h-full min-h-[50px] items-center justify-center p-2 ${activeTab === 'filter' ? 'hidden' : 'block'}`}
+              >
+                <FiFilter className="h-5 w-5 text-neutral-500" />
+                {activeFilters.length !== SUBJECTS.length && (
+                  <div className="absolute top-2 right-2 h-2 w-2 rounded bg-violet-600" />
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+
+          {/* 즐겨찾기 모드 버튼 */}
+          <div className="absolute right-0 bottom-5 z-10">
+            <button onClick={onHandleFavoriteMode} className="mr-2.5 flex h-8 w-8 cursor-pointer items-center justify-center border border-gray-600 bg-white text-gray-600 shadow transition-colors duration-150 active:bg-neutral-800 active:text-white">
+              {isFavoriteMode ? (
+                <HiStar className="h-5 w-5 text-violet-600" />
+              ) : (
+                <HiOutlineStar className="h-5 w-5 text-gray-600 active:text-white" />
+              )}
+            </button>
+          </div>
+        </>
       )}
 
       {(isLocating || isLoadingPlaces) && (
@@ -894,6 +964,7 @@ export const Map = () => {
         places={visiblePlacesData}
         selectedPlace={selectedPlace}
         onPlaceSelect={handlePlaceSelect}
+        onFavoriteChange={handleFavoriteChange}
       />
     </div>
   );

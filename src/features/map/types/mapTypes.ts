@@ -7,6 +7,7 @@ export interface ViewNightSpotResult {
 }
 
 export interface ViewNightSpot {
+  ID: string,
   SUBJECT_CD: string;
   TITLE: string;
   ADDR: string;
@@ -23,6 +24,7 @@ export interface ViewNightSpot {
   PARKING_INFO: string;
   REG_DATE: string;
   MOD_DATE: string;
+  IS_FAVORITE: boolean;
 }
 
 export interface ApiResponse {

@@ -12,6 +12,7 @@ interface MapSidebarProps {
   places: ViewNightSpot[];
   selectedPlace: ViewNightSpot | null;
   onPlaceSelect: (place: ViewNightSpot | null) => void;
+  onFavoriteChange: () => void;
 }
 
 export const MapSidebar = ({
@@ -20,6 +21,7 @@ export const MapSidebar = ({
   places,
   selectedPlace,
   onPlaceSelect,
+  onFavoriteChange,
 }: MapSidebarProps) => {
   const sidebarRef = useRef<HTMLDivElement | null>(null);
 
@@ -77,7 +79,7 @@ export const MapSidebar = ({
         {/* 사이드바 내용 */}
         <div className="h-[calc(100%-60px)] overflow-y-auto p-4">
           {selectedPlace ? (
-            <DetailPlaceContext selectedPlace={selectedPlace} />
+            <DetailPlaceContext selectedPlace={selectedPlace} onFavoriteChange={onFavoriteChange} />
           ) : (
             <ul className="space-y-2">
               {places.map((place, index) => (
