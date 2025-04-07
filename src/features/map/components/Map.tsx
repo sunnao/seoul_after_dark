@@ -707,8 +707,12 @@ export const Map = () => {
   }, [isNaverReady, getCurrentLocation, openSidebar, handlePlaceSelect]);
   
   const onHandleFavoriteMode = useCallback(() => {
+    if (!user) {
+      alert('로그인이 필요한 기능입니다.');
+      return;
+    }
     setIsFavoriteMode(!isFavoriteMode);
-  }, [isFavoriteMode]);
+  }, [isFavoriteMode, user]);
 
   // 총 장소 데이터가 변경될 때 마커 생성
   useEffect(() => {
@@ -839,13 +843,13 @@ export const Map = () => {
                   {/* 검색창 */}
                   <div className="flex w-full items-center gap-2">
                     <FaSearch
-                      className={`h-5 w-5 text-neutral-500 ${activeTab === 'search' && 'ml-3'}`}
+                      className={`h-5 w-8 text-neutral-500 sm:w-5 ${activeTab === 'search' && 'ml-1 sm:ml-3'}`}
                     />
                     <div className="relative w-full">
                       <input
                         type="text"
                         placeholder="장소명 또는 주소 검색"
-                        className="w-full border-none bg-transparent focus:outline-none"
+                        className="w-full border-none bg-transparent text-gray-700 caret-base-200 focus:outline-none"
                         value={searchKeyword}
                         onChange={handleSearchInputChange}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -897,7 +901,7 @@ export const Map = () => {
                           >
                             <div>{parse(createMarkerIcon(place, false)?.content || '')}</div>
                             <div>
-                              <div className="font-medium">{place.TITLE}</div>
+                              <div className="font-medium text-gray-800">{place.TITLE}</div>
                               <div className="text-sm text-gray-500">{place.ADDR}</div>
                             </div>
                           </div>
@@ -917,7 +921,7 @@ export const Map = () => {
 
             {/* 필터영역 */}
             <div
-              className={`overflow-hidden rounded-lg bg-white/90 shadow-md transition-all duration-300 ease-in-out ${
+              className={`overflow-hidden rounded-lg bg-white/90 shadow-md transition-all duration-300 ease-in-out  ${
                 activeTab === 'filter' ? 'flex-grow' : 'w-10'
               }`}
               onClick={(e) => {
@@ -931,7 +935,7 @@ export const Map = () => {
               <div
                 className={`flex h-full min-h-[50px] items-center justify-center p-2 ${activeTab === 'filter' ? 'hidden' : 'block'}`}
               >
-                <FiFilter className="h-5 w-5 text-neutral-500" />
+                <FiFilter className="h-5 w-8 text-neutral-500 sm:w-5" />
                 {activeFilters.length !== SUBJECTS.length && (
                   <div className="absolute top-2 right-2 h-2 w-2 rounded bg-violet-600" />
                 )}
@@ -941,7 +945,10 @@ export const Map = () => {
 
           {/* 즐겨찾기 모드 버튼 */}
           <div className="absolute right-0 bottom-5 z-10">
-            <button onClick={onHandleFavoriteMode} className="mr-2.5 flex h-8 w-8 cursor-pointer items-center justify-center border border-gray-600 bg-white text-gray-600 shadow transition-colors duration-150 active:bg-neutral-800 active:text-white">
+            <button
+              onClick={onHandleFavoriteMode}
+              className="mr-2.5 flex h-8 w-8 cursor-pointer items-center justify-center border border-gray-600 bg-white text-gray-600 shadow transition-colors duration-150 active:bg-neutral-800 active:text-white"
+            >
               {isFavoriteMode ? (
                 <HiStar className="h-5 w-5 text-violet-600" />
               ) : (
