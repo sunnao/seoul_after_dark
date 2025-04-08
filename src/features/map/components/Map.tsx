@@ -7,7 +7,7 @@ import { ApiResponse, MarkerWithData, ViewNightSpot } from '@features/map/types/
 
 import { MdOutlineMyLocation } from 'react-icons/md';
 import { ImSpinner2 } from 'react-icons/im';
-import { FaList, FaSearch } from 'react-icons/fa';
+import { FaChevronUp, FaList, FaSearch } from 'react-icons/fa';
 import { renderToString } from 'react-dom/server';
 import { MapSidebar } from '@/features/map/components/MapSidebar';
 import { FilterChips } from '@/features/map/components/FilterChips';
@@ -42,6 +42,7 @@ export const Map = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [selectedPlace, setSelectedPlace] = useState<ViewNightSpot | null>(null);
   const [activeTab, setActiveTab] = useState<'filter' | 'search'>('filter');
+  const [isContainerShow, setIsContainerShow] = useState<boolean>(true);
   const [isFavoriteMode, setIsFavoriteMode] = useState<boolean>(false);
 
   // 검색 관련 상태
@@ -228,13 +229,13 @@ export const Map = () => {
 
       if (isSearchMode) {
         // marker.setMap(null);
-      } 
-        const iconConfig = createMarkerIcon(placeData, false);
-        if (iconConfig) {
-          marker.setIcon(iconConfig);
-        }
-        marker.setZIndex(50);
-      
+      }
+      const iconConfig = createMarkerIcon(placeData, false);
+      if (iconConfig) {
+        marker.setIcon(iconConfig);
+      }
+      marker.setZIndex(50);
+
       selectedMarkerRef.current = null;
     }
   }, [createMarkerIcon, isSearchMode]);
@@ -346,7 +347,7 @@ export const Map = () => {
           previousZoomRef.current = null;
         }
 
-        closeSidebar();
+        // closeSidebar();
       }
     },
     [
@@ -356,7 +357,7 @@ export const Map = () => {
       moveMapToPlace,
       openSidebar,
       openInfoWindowForPlace,
-      closeSidebar,
+      //   closeSidebar,
     ],
   );
 
@@ -486,7 +487,7 @@ export const Map = () => {
       // 검색 모드일 때는 필터링된 모든 마커 표시
       markersRef.current.forEach(({ marker, placeData }) => {
         const isPassFavorite = isFavoriteMode ? placeData.IS_FAVORITE : true;
-        
+
         const shouldShow = filtered.some((place) => place.ID === placeData.ID) && isPassFavorite;
 
         marker.setMap(shouldShow ? mapInstanceRef.current : null);
@@ -518,7 +519,6 @@ export const Map = () => {
       });
     }
 
-    
     if (selectedMarkerRef.current) {
       const { marker, placeData } = selectedMarkerRef.current;
       if (isFavoriteMode) {
@@ -705,7 +705,7 @@ export const Map = () => {
 
     listButton.setMap(mapInstanceRef.current);
   }, [isNaverReady, getCurrentLocation, openSidebar, handlePlaceSelect]);
-  
+
   const onHandleFavoriteMode = useCallback(() => {
     if (!user) {
       alert('로그인이 필요한 기능입니다.');
@@ -830,115 +830,128 @@ export const Map = () => {
 
       {isNaverReady && (
         <>
-          <div className="absolute top-2 right-0 left-0 z-10 mx-auto flex w-[80%] max-w-[800px] gap-2">
-            {/* 검색 영역 */}
+          <div className="absolute top-2 right-0 left-0 z-10 mx-auto flex w-[90%] max-w-[800px] gap-2 md:w-[80%]">
             <div
-              className={`flex items-center rounded-lg bg-white/90 p-2 shadow-md transition-all duration-300 ease-in-out ${
-                activeTab === 'search' ? 'flex-grow' : 'w-10'
-              }`}
-              onClick={() => activeTab !== 'search' && setActiveTab('search')}
+              onClick={() => setIsContainerShow(!isContainerShow)}
+              className="min-w-[20px] self-start rounded-md bg-white/90 p-1 shadow-md"
             >
-              {activeTab === 'search' ? (
-                <>
-                  {/* 검색창 */}
-                  <div className="flex w-full items-center gap-2">
-                    <FaSearch
-                      className={`h-5 w-8 text-neutral-500 sm:w-5 ${activeTab === 'search' && 'ml-1 sm:ml-3'}`}
-                    />
-                    <div className="relative w-full">
-                      <input
-                        type="text"
-                        placeholder="장소명 또는 주소 검색"
-                        className="w-full border-none bg-transparent text-gray-700 caret-base-200 focus:outline-none"
-                        value={searchKeyword}
-                        onChange={handleSearchInputChange}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleTabChange('search');
-                          if (searchKeyword.length >= 2) {
-                            setIsAutoCompleteVisible(true);
-                          }
-                        }}
+              <FaChevronUp
+                className={`h-full w-full text-neutral-600 transition-all duration-300 ${isContainerShow ? '' : 'rotate-180'}`}
+              />
+            </div>
+            <div className={`${isContainerShow ? 'block' : 'hidden'} flex w-full gap-2`}>
+              {/* 검색 영역 */}
+              <div
+                className={`flex items-center rounded-lg bg-white/90 p-2 shadow-md transition-all duration-300 ease-in-out ${
+                  activeTab === 'search' ? 'flex-grow' : 'w-8 md:w-10'
+                }`}
+                onClick={() => activeTab !== 'search' && setActiveTab('search')}
+              >
+                {activeTab === 'search' ? (
+                  <>
+                    {/* 검색창 */}
+                    <div className="flex w-full items-center gap-2">
+                      <FaSearch
+                        className={`h-5 w-5 text-neutral-500 ${activeTab === 'search' && 'ml-1 sm:ml-3'}`}
                       />
-                      {searchKeyword && (
-                        <button
-                          className="absolute top-1/2 right-2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700"
+                      <div className="flex flex-grow items-center">
+                        <input
+                          type="text"
+                          placeholder="장소명 또는 주소 검색"
+                          className="w-full border-none bg-transparent text-gray-700 caret-grat-800 focus:outline-none"
+                          value={searchKeyword}
+                          onChange={handleSearchInputChange}
+                          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSearchKeyword('');
-                            setIsSearchMode(false);
-                            setAutoCompleteItems([]);
-                            updateVisibleMarkers();
-                            isInitialSearchFit.current = false;
+                            handleTabChange('search');
+                            if (searchKeyword.length >= 2) {
+                              setIsAutoCompleteVisible(true);
+                            }
                           }}
-                        >
-                          <TiDelete className="text-xl" />
-                        </button>
-                      )}
-                    </div>
-
-                    <button
-                      className="rounded-full bg-neutral-800 px-4 py-2 text-white btn-md"
-                      onClick={handleSearch}
-                    >
-                      <FaSearch className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  {/* 자동완성 */}
-                  {isAutoCompleteVisible && (
-                    <div className="absolute top-full right-0 left-0 z-20 mt-1 max-h-60 overflow-y-auto rounded-lg bg-white/95 shadow-lg">
-                      {autoCompleteItems.length > 0 ? (
-                        autoCompleteItems.map((place, index) => (
-                          <div
-                            key={`${place.TITLE}-${index}`}
-                            className="flex cursor-pointer items-center gap-2 px-4 py-2 hover:bg-gray-100"
+                        />
+                        {searchKeyword && (
+                          <button
+                            className="mr-1 p-1 text-gray-500 hover:text-gray-700"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleAutoCompleteSelect(place);
+                              setSearchKeyword('');
+                              setIsSearchMode(false);
+                              setAutoCompleteItems([]);
+                              updateVisibleMarkers();
+                              isInitialSearchFit.current = false;
                             }}
                           >
-                            <div>{parse(createMarkerIcon(place, false)?.content || '')}</div>
-                            <div>
-                              <div className="font-medium text-gray-800">{place.TITLE}</div>
-                              <div className="text-sm text-gray-500">{place.ADDR}</div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-4 py-2 text-gray-500">일치하는 장소가 없습니다.</div>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <button className="flex h-full w-full items-center justify-center">
-                  <FaSearch className="h-5 w-5 text-neutral-500" />
-                </button>
-              )}
-            </div>
+                            <TiDelete className="text-xl" />
+                          </button>
+                        )}
 
-            {/* 필터영역 */}
-            <div
-              className={`overflow-hidden rounded-lg bg-white/90 shadow-md transition-all duration-300 ease-in-out  ${
-                activeTab === 'filter' ? 'flex-grow' : 'w-10'
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleTabChange('filter');
-              }}
-            >
-              <div className={`${activeTab === 'filter' ? 'block' : 'hidden'}`}>
-                <FilterChips onFilterChange={handleFilterChange} activeFilters={activeFilters} />
-              </div>
-              <div
-                className={`flex h-full min-h-[50px] items-center justify-center p-2 ${activeTab === 'filter' ? 'hidden' : 'block'}`}
-              >
-                <FiFilter className="h-5 w-8 text-neutral-500 sm:w-5" />
-                {activeFilters.length !== SUBJECTS.length && (
-                  <div className="absolute top-2 right-2 h-2 w-2 rounded bg-violet-600" />
+                        <button
+                          className="btn rounded-full bg-neutral-800 px-4 py-2 text-white btn-xs md:btn-sm"
+                          onClick={handleSearch}
+                        >
+                          <FaSearch className="md:h-4 md:w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 자동완성 */}
+                    {isAutoCompleteVisible && (
+                      <div
+                        className="absolute top-full right-0 left-0 z-20 mt-1 max-h-60 overflow-y-auto rounded-lg bg-white/95 shadow-lg"
+                        style={{ width: 'calc(100% - 31px)', marginLeft: '31px' }}
+                      >
+                        {autoCompleteItems.length > 0 ? (
+                          autoCompleteItems.map((place, index) => (
+                            <div
+                              key={`${place.TITLE}-${index}`}
+                              className="flex cursor-pointer items-center gap-2 px-4 py-2 hover:bg-gray-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAutoCompleteSelect(place);
+                              }}
+                            >
+                              <div>{parse(createMarkerIcon(place, false)?.content || '')}</div>
+                              <div>
+                                <div className="font-medium text-gray-800">{place.TITLE}</div>
+                                <div className="text-sm text-gray-500">{place.ADDR}</div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-4 py-2 text-gray-500">일치하는 장소가 없습니다.</div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <button className="flex h-full w-full items-center justify-center">
+                    <FaSearch className="h-5 w-5 text-neutral-500" />
+                  </button>
                 )}
+              </div>
+
+              {/* 필터영역 */}
+              <div
+                className={`overflow-hidden rounded-lg bg-white/90 shadow-md transition-all duration-300 ease-in-out ${
+                  activeTab === 'filter' ? 'flex-grow' : 'w-7 shrink-0 md:w-10'
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleTabChange('filter');
+                }}
+              >
+                <div className={`${activeTab === 'filter' ? 'block' : 'hidden'}`}>
+                  <FilterChips onFilterChange={handleFilterChange} activeFilters={activeFilters} />
+                </div>
+                <div
+                  className={`flex h-full min-h-[50px] items-center justify-center ${activeTab === 'filter' ? 'hidden' : 'block'}`}
+                >
+                  <FiFilter className="h-5 text-neutral-500 sm:w-5" />
+                  {activeFilters.length !== SUBJECTS.length && (
+                    <div className="absolute top-2 right-2 h-2 w-2 rounded bg-violet-600" />
+                  )}
+                </div>
               </div>
             </div>
           </div>
