@@ -7,7 +7,7 @@ export const Header = () => {
 
   return (
     <header>
-      <div className="navbar bg-base-100 shadow-sm">
+      <div className="navbar bg-base-200 shadow-sm">
         <div className="flex-none">
           <label
             htmlFor="my-drawer-2"

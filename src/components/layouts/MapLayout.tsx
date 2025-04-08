@@ -4,7 +4,7 @@ import { Outlet } from 'react-router-dom';
 
 export const MapLayout = () => {
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col bg-base-300">
       <Header />
       <div className="relative flex flex-1">
         <div className="drawer h-full w-full">
@@ -13,7 +13,7 @@ export const MapLayout = () => {
             <Outlet />
           </div>
 
-          <SideNavbar/>
+          <SideNavbar />
         </div>
       </div>
     </div>

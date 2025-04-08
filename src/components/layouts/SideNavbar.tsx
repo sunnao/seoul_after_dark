@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 export const SideNavbar = () => {
   return (
     <>
-      <ul className="menu hidden h-full w-15 flex-nowrap overflow-y-auto bg-base-200 px-2 py-6 text-base-content md:block">
+      <ul className="menu hidden h-full w-15 flex-nowrap overflow-y-auto bg-base-100 px-2 py-6 text-base-content md:block">
         <li>
           <Link to="/">
             <GrMapLocation className="text-lg" />
@@ -17,7 +17,7 @@ export const SideNavbar = () => {
           aria-label="close sidebar"
           className="drawer-overlay opacity-0"
         ></label>
-        <ul className="menu h-full w-15 flex-nowrap overflow-y-auto bg-base-200 px-2 py-6 text-base-content md:w-50">
+        <ul className="menu z-100 h-full w-15 flex-nowrap overflow-y-auto bg-base-100 px-2 py-6 text-base-content md:w-50">
           <li>
             <Link to="/">
               <GrMapLocation className="mr-2 text-lg" />
