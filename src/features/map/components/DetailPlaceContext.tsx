@@ -3,12 +3,7 @@ import parse from 'html-react-parser';
 import { HiOutlineStar, HiStar } from 'react-icons/hi2';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 
-interface DetailPlaceProps {
-  selectedPlace: ViewNightSpot;
-  onFavoriteChange: () => void;
-}
-
-const DetailPlaceContext = ({ selectedPlace, onFavoriteChange }: DetailPlaceProps) => {
+const DetailPlaceContext = ({ selectedPlace }: { selectedPlace: ViewNightSpot }) => {
   const { user, updateUser } = useAuth();
 
   const toogleFavorite = (isAddFavoriteMode: boolean) => {
@@ -18,7 +13,9 @@ const DetailPlaceContext = ({ selectedPlace, onFavoriteChange }: DetailPlaceProp
     }
 
     const updatedUser = { ...user };
-    if (updatedUser.favoritePlaceIds === undefined) {
+
+    // 즐겨찾기 배열이 없으면 초기화
+    if (!Array.isArray(updatedUser.favoritePlaceIds)) {
       updatedUser.favoritePlaceIds = [];
     }
 
@@ -27,19 +24,12 @@ const DetailPlaceContext = ({ selectedPlace, onFavoriteChange }: DetailPlaceProp
         updatedUser.favoritePlaceIds.push(selectedPlace.ID);
       }
     } else {
-      console.log('mm')
       updatedUser.favoritePlaceIds = updatedUser.favoritePlaceIds.filter(
         (placeId) => placeId !== selectedPlace.ID,
       );
     }
-    
-    updateUser(
-      updatedUser.email,
-      updatedUser.password,
-      updatedUser.username,
-      updatedUser.favoritePlaceIds,
-    );
-    onFavoriteChange();
+
+    updateUser(updatedUser);
   };
 
   return (

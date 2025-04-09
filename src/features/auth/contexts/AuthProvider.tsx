@@ -4,12 +4,14 @@ import { AuthContext } from '@/features/auth/contexts/AuthContext';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const loggedInUser = localStorage.getItem('loggedInUser');
     if (loggedInUser) {
       setUser(JSON.parse(loggedInUser));
     }
+    setAuthLoading(false);
   }, []);
 
   const setAppUser = (userData: User | null) => {
@@ -17,6 +19,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setAppUser }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, setAppUser, authLoading }}>
+      {children}
+    </AuthContext.Provider>
   );
 };

@@ -23,7 +23,7 @@ export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<naver.maps.Map | null>(null);
   const currentMarkerRef = useRef<naver.maps.Marker | null>(null);
-  const { user } = useAuth();
+  const { user, authLoading } = useAuth();
 
   // 장소 데이터 상태
   const [totalPlaceData, setTotalPlaceData] = useState<ViewNightSpot[]>([]);
@@ -85,10 +85,9 @@ export const Map = () => {
         const placesAddIdAndFavorite = places.map((place) => ({
           ...place,
           ID: `${place.LA}_${place.LO}`,
-          IS_FAVORITE: user
-            ? (user.favoritePlaceIds || []).includes(`${place.LA}_${place.LO}`)
-            : false,
+          IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`${place.LA}_${place.LO}`),
         }));
+
         setTotalPlaceData(placesAddIdAndFavorite);
       }
     } catch (e) {
@@ -97,6 +96,32 @@ export const Map = () => {
       setIsLoadingPlaces(false);
     }
   }, [user]);
+
+  useEffect(() => {
+    // 인증 로딩이 완료된 경우에만 데이터 로드
+    if (!authLoading) {
+      fetchViewNightSpotData();
+    }
+  }, [authLoading, fetchViewNightSpotData]);
+
+  // 사용자 정보가 변경될 때 즐겨찾기 상태 업데이트
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!user) {
+      setIsFavoriteMode(false);
+      return;
+    }
+
+    setTotalPlaceData((prevData) =>
+      prevData.map((place) => ({
+        ...place,
+        IS_FAVORITE: (user.favoritePlaceIds || []).includes(place.ID),
+      })),
+    );
+  }, [user, authLoading]);
 
   // 마커 아이콘 생성 함수
   const createMarkerIcon = useCallback(
@@ -240,20 +265,6 @@ export const Map = () => {
     }
   }, [createMarkerIcon, isSearchMode]);
 
-  // 즐겨찾기 변경 핸들러 - user 정보가 변경될 때마다 totalPlaceData 업데이트
-  const handleFavoriteChange = useCallback(() => {
-    if (!user) {
-      return setIsFavoriteMode(false);
-    }
-
-    setTotalPlaceData((prevData) =>
-      prevData.map((place) => ({
-        ...place,
-        IS_FAVORITE: (user.favoritePlaceIds || []).includes(place.ID),
-      })),
-    );
-  }, [user]);
-
   // 선택된 장소에 해당하는 인포윈도우 열기
   const openInfoWindowForPlace = useCallback(() => {
     if (!mapInstanceRef.current || !isNaverReady || !selectedMarkerRef.current || !window.naver)
@@ -378,6 +389,7 @@ export const Map = () => {
 
         if (!iconConfig) return null;
 
+        // 마커 생성 시 처음부터 지도에 표시
         const marker = new naver.maps.Marker({
           position: new naver.maps.LatLng(Number(place.LA), Number(place.LO)),
           map: undefined, // 초기에는 지도에 표시하지 않음
@@ -475,10 +487,7 @@ export const Map = () => {
 
   // 지도 영역 내 보이는 마커 업데이트
   const updateVisibleMarkers = useCallback(() => {
-    console.log('updateVisibleMarkers(지도 영역 내 보이는 마커 업데이트)');
     if (!mapInstanceRef.current || !isNaverReady) return;
-
-    console.log('->updateVisibleMarkers 통과');
 
     const filtered = filterPlaces();
     const visiblePlaces: ViewNightSpot[] = [];
@@ -542,7 +551,6 @@ export const Map = () => {
 
   // 지도 이동 완료 후 핸들러
   const handleMapIdle = useCallback(() => {
-    console.log('handleMapIdle');
     if (selectedMarkerRef.current) {
       // 선택된 마커가 있으면 인포윈도우 열기
       const { marker, placeData } = selectedMarkerRef.current;
@@ -712,13 +720,11 @@ export const Map = () => {
       return;
     }
     setIsFavoriteMode(!isFavoriteMode);
-  }, [isFavoriteMode, user]);
+  }, [isFavoriteMode]);
 
   // 총 장소 데이터가 변경될 때 마커 생성
   useEffect(() => {
-    console.log('총 장소 데이터가 변경될 때 마커 생성', isNaverReady, totalPlaceData.length !== 0);
     if (!isNaverReady || totalPlaceData.length === 0) return;
-    console.log('통과->');
 
     // 기존 마커 제거
     markersRef.current.forEach(({ marker }) => {
@@ -807,10 +813,7 @@ export const Map = () => {
     };
   }, [isNaverReady, handleMapIdle, resetSelectedMarkerAndInfoWindow, closeSidebar]);
 
-  useEffect(() => {
-    fetchViewNightSpotData();
-  }, [fetchViewNightSpotData]);
-
+  // 컴포넌트 마운트 시 실행되는 코드들
   useEffect(() => {
     updateCurrentLocationMarker();
   }, [updateCurrentLocationMarker]);
@@ -984,7 +987,6 @@ export const Map = () => {
         places={visiblePlacesData}
         selectedPlace={selectedPlace}
         onPlaceSelect={handlePlaceSelect}
-        onFavoriteChange={handleFavoriteChange}
       />
     </div>
   );

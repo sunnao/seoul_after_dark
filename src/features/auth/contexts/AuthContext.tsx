@@ -4,6 +4,7 @@ import { createContext, useContext } from 'react';
 interface AuthContextType {
   user: User | null;
   setAppUser: (user: User|null) => void;
+  authLoading: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);

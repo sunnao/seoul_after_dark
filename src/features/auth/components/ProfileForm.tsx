@@ -30,7 +30,7 @@ export const ProfileForm = ({ isEditMode, toogleEditMode }: ProfileFormProps) =>
   });
 
   useEffect(() => {
-    if (user ) {
+    if (user) {
       reset({
         email: user.email,
         username: user.username,
@@ -41,7 +41,7 @@ export const ProfileForm = ({ isEditMode, toogleEditMode }: ProfileFormProps) =>
   }, [user, reset, isEditMode]);
 
   const onSubmit = (data: { email: string; password: string; username: string }) => {
-    const result = updateUser(data.email, data.password, data.username);
+    const result = updateUser({email: data.email, password: data.password, username:data.username});
     setUpdateResult(result);
     
     if (result.success) {

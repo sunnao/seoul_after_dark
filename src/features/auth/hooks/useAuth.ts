@@ -2,7 +2,7 @@ import { User } from '@/features/auth/types/userTypes';
 import { useAuthContext } from '@/features/auth/contexts';
 
 export const useAuth = () => {
-  const { user, setAppUser } = useAuthContext();
+  const { user, setAppUser, authLoading } = useAuthContext();
 
   const login = (email: string, password: string) => {
     const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
@@ -11,9 +11,10 @@ export const useAuth = () => {
     );
 
     if (matchedUser) {
-      const loggedInUser: User = matchedUser;
-      localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
-      setAppUser(loggedInUser);
+      localStorage.setItem('loggedInUser', JSON.stringify(matchedUser));
+      setAppUser(matchedUser);
+
+      console.log(user);
       return true;
     }
     return false;
@@ -40,28 +41,20 @@ export const useAuth = () => {
     return { success: true, message: '회원가입 완료' };
   };
 
-  const updateUser = (
-    email: string,
-    password: string,
-    name: string,
-    favoritePlaceIds?: string[],
-  ) => {
-    const username = name || email.split('@')[0];
-    const newUserData: User = { email, password, username, favoritePlaceIds };
-
+  const updateUser = (newUserData: User) => {
     const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
 
     for (let i = 0; i < users.length; i++) {
-      if (users[i].email === email) {
-        users[i] = newUserData;
-        localStorage.setItem('loggedInUser', JSON.stringify(newUserData));
+      if (users[i].email === newUserData.email) {
+        users[i] = { ...users[i], ...newUserData };
+        localStorage.setItem('loggedInUser', JSON.stringify(users[i]));
         localStorage.setItem('users', JSON.stringify(users));
-        setAppUser(newUserData);
+        setAppUser(users[i]);
         return { success: true, message: '회원정보 수정 완료' };
       }
     }
     return { success: false, message: '회원정보 수정에 실패했습니다.' };
   };
 
-  return { user, login, logout, join, updateUser };
+  return { user, login, logout, join, updateUser, authLoading };
 };
