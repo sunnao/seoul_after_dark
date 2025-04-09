@@ -55,6 +55,43 @@ export const useAuth = () => {
     }
     return { success: false, message: '회원정보 수정에 실패했습니다.' };
   };
+  
+  const addFavorite= (placeId: string) => {
+    if (!user) {
+      alert('로그인이 필요한 기능입니다.');
+      return;
+    }
+    
+    const updatedUser = { ...user };
+    if (updatedUser.favoritePlaceIds === undefined) {
+      updatedUser.favoritePlaceIds = [];
+    }
+    
+    if (!updatedUser.favoritePlaceIds.includes(placeId)) {
+      updatedUser.favoritePlaceIds.push(placeId);
+    }
 
-  return { user, login, logout, join, updateUser, authLoading };
+    updateUser(updatedUser);
+  }
+  
+  const deleteFavorite = (placeId: string) => {
+    if (!user) {
+      alert('로그인이 필요한 기능입니다.');
+      return;
+    }
+    
+    const updatedUser = { ...user };
+    if (updatedUser.favoritePlaceIds === undefined) {
+      updatedUser.favoritePlaceIds = [];
+    }
+    
+    updatedUser.favoritePlaceIds = updatedUser.favoritePlaceIds.filter(
+      (savedPlaceId) => savedPlaceId !== placeId,
+    );
+
+    
+    updateUser(updatedUser);
+  }
+
+  return { user, login, logout, join, updateUser, authLoading, addFavorite, deleteFavorite };
 };

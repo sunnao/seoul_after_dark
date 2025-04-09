@@ -4,32 +4,14 @@ import { HiOutlineStar, HiStar } from 'react-icons/hi2';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 
 const DetailPlaceContext = ({ selectedPlace }: { selectedPlace: ViewNightSpot }) => {
-  const { user, updateUser } = useAuth();
+  const { addFavorite, deleteFavorite } = useAuth();
 
   const toogleFavorite = (isAddFavoriteMode: boolean) => {
-    if (!user) {
-      alert('로그인이 필요한 기능입니다.');
-      return;
-    }
-
-    const updatedUser = { ...user };
-
-    // 즐겨찾기 배열이 없으면 초기화
-    if (!Array.isArray(updatedUser.favoritePlaceIds)) {
-      updatedUser.favoritePlaceIds = [];
-    }
-
     if (isAddFavoriteMode) {
-      if (!updatedUser.favoritePlaceIds.includes(selectedPlace.ID)) {
-        updatedUser.favoritePlaceIds.push(selectedPlace.ID);
-      }
+      addFavorite(selectedPlace.ID);
     } else {
-      updatedUser.favoritePlaceIds = updatedUser.favoritePlaceIds.filter(
-        (placeId) => placeId !== selectedPlace.ID,
-      );
+      deleteFavorite(selectedPlace.ID);
     }
-
-    updateUser(updatedUser);
   };
 
   return (
