@@ -6,6 +6,7 @@ import { MapPage } from '@/pages/MapPage';
 import { MapLayout } from '@/components/layouts/MapLayout';
 import { JoinPage } from '@/pages/JoinPage';
 import { MyPage } from '@/pages/MyPage';
+import { FavoritePage } from '@/pages/FavoritePage';
 import { AuthProvider } from '@/features/auth/contexts';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
           </Route>
           <Route path="/" element={<Layout />}>
             <Route path="mypage" element={<MyPage />} />
+            <Route path="favorite" element={<FavoritePage />} />
           </Route>
         </Routes>
       </BrowserRouter>

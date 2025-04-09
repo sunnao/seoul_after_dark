@@ -4,18 +4,18 @@ import { Outlet } from 'react-router-dom';
 
 export const Layout = () => {
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col bg-base-300">
       <Header />
-      <div className="relative flex flex-1 overflow-auto">
+      <div className="relative flex flex-1">
         <div className="drawer">
           <input id="my-drawer-2" type="checkbox" className="drawer-toggle" />
-          <div className="drawer-content flex flex-col items-center justify-center">
+          <div className="drawer-content flex flex-col items-center justify-center overflow-auto">
             <Outlet />
           </div>
 
           <SideNavbar />
         </div>
       </div>
-     </div>
+    </div>
   );
 };
