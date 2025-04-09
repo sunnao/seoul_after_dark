@@ -23,7 +23,7 @@ export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<naver.maps.Map | null>(null);
   const currentMarkerRef = useRef<naver.maps.Marker | null>(null);
-  const { user, authLoading } = useAuth();
+  const { user, authLoading, logout } = useAuth();
 
   // 장소 데이터 상태
   const [totalPlaceData, setTotalPlaceData] = useState<ViewNightSpot[]>([]);
@@ -716,6 +716,7 @@ export const Map = () => {
 
   const onHandleFavoriteMode = useCallback(() => {
     if (!user) {
+      logout();
       alert('로그인이 필요한 기능입니다.');
       return;
     }

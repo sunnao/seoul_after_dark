@@ -42,6 +42,12 @@ export const useAuth = () => {
   };
 
   const updateUser = (newUserData: User) => {
+    if (!user) {
+      logout();
+      alert('로그인이 필요한 기능입니다.');
+      return { success: false, message: '로그인이 필요한 기능입니다.' };
+    }
+    
     const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
 
     for (let i = 0; i < users.length; i++) {
@@ -58,6 +64,7 @@ export const useAuth = () => {
   
   const addFavorite= (placeId: string) => {
     if (!user) {
+      logout();
       alert('로그인이 필요한 기능입니다.');
       return;
     }
