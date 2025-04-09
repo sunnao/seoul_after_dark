@@ -23,7 +23,7 @@ export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<naver.maps.Map | null>(null);
   const currentMarkerRef = useRef<naver.maps.Marker | null>(null);
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
 
   // 장소 데이터 상태
   const [totalPlaceData, setTotalPlaceData] = useState<ViewNightSpot[]>([]);
@@ -242,9 +242,9 @@ export const Map = () => {
 
   // 즐겨찾기 변경 핸들러 - user 정보가 변경될 때마다 totalPlaceData 업데이트
   const handleFavoriteChange = useCallback(() => {
-    refreshUser();
-
-    if (!user) return;
+    if (!user) {
+      return setIsFavoriteMode(false);
+    }
 
     setTotalPlaceData((prevData) =>
       prevData.map((place) => ({
@@ -252,7 +252,7 @@ export const Map = () => {
         IS_FAVORITE: (user.favoritePlaceIds || []).includes(place.ID),
       })),
     );
-  }, [refreshUser, user]);
+  }, [user]);
 
   // 선택된 장소에 해당하는 인포윈도우 열기
   const openInfoWindowForPlace = useCallback(() => {
@@ -858,7 +858,7 @@ export const Map = () => {
                         <input
                           type="text"
                           placeholder="장소명 또는 주소 검색"
-                          className="w-full border-none bg-transparent text-gray-700 caret-grat-800 focus:outline-none"
+                          className="caret-grat-800 w-full border-none bg-transparent text-gray-700 focus:outline-none"
                           value={searchKeyword}
                           onChange={handleSearchInputChange}
                           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
