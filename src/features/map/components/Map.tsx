@@ -56,6 +56,21 @@ export const Map = () => {
   const previousZoomRef = useRef<number | null>(null);
   const previousCenterRef = useRef<naver.maps.CoordLiteral | null>(null);
 
+  const prevUpdateCountRef = useRef<unknown | null>({
+    isNaverReady: null,
+    handleMapIdle: null,
+    resetSelectedMarkerAndInfoWindow: null,
+    closeSidebar: null,
+  });
+
+  const updateVisibleMarkersRef = useRef<unknown | null>({
+    isNaverReady: null,
+    filterPlaces: null,
+    isSearchMode: null,
+    fitMapToMarkers: null,
+    isFavoriteMode: null,
+  });
+
   // 네이버 지도 스크립트 로드
   const [isScriptLoading, scriptError] = useScript(
     `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${
@@ -263,6 +278,7 @@ export const Map = () => {
 
       selectedMarkerRef.current = null;
     }
+    setSelectedPlace(null);
   }, [createMarkerIcon, isSearchMode]);
 
   // 선택된 장소에 해당하는 인포윈도우 열기
@@ -283,6 +299,7 @@ export const Map = () => {
       content: infoWindowContent,
       borderWidth: 0,
       disableAnchor: true,
+      disableAutoPan: true,
     });
 
     // 인포윈도우 클릭 이벤트 추가
@@ -313,6 +330,8 @@ export const Map = () => {
     }
 
     // 지도 중심/줌 이동
+    console.log('moveMapToPlace~~~~~~~~~~');
+
     mapInstanceRef.current.morph(placePosition, 15, { duration: 200, easing: 'easeOutCubic' });
   }, [isNaverReady]);
 
@@ -349,6 +368,8 @@ export const Map = () => {
       } else {
         // 장소 선택 해제 시 이전 위치로 복귀
         if (previousCenterRef.current && previousZoomRef.current && mapInstanceRef.current) {
+          console.log('장소 선택 해제 시 이전 위치로 복귀');
+
           mapInstanceRef.current.morph(previousCenterRef.current, previousZoomRef.current, {
             duration: 200,
             easing: 'easeOutCubic',
@@ -407,6 +428,7 @@ export const Map = () => {
 
         // 마커 클릭 이벤트
         marker.addListener('click', () => {
+          console.log('마커 클릭 이벤트, handlePlaceSelect');
           handlePlaceSelect(place);
         });
 
@@ -456,11 +478,13 @@ export const Map = () => {
   // 검색 결과 마커들이 모두 화면에 들어오도록 지도 범위 조정
   const fitMapToMarkers = useCallback(
     (places: ViewNightSpot[]) => {
+      console.log('fitMapToMarkers', places);
+
       if (
         !mapInstanceRef.current ||
         !isNaverReady ||
-        places.length === 0 ||
-        isInitialSearchFit.current
+        places.length === 0
+        || isInitialSearchFit.current
       )
         return;
 
@@ -475,6 +499,9 @@ export const Map = () => {
         const position = new naver.maps.LatLng(Number(place.LA), Number(place.LO));
         bounds.extend(position);
       });
+
+      console.log('fitMapToMarkers~~~~~~~~~~');
+
       mapInstanceRef.current.panToBounds(
         bounds,
         { duration: 200, easing: 'easeOutCubic' },
@@ -487,6 +514,57 @@ export const Map = () => {
 
   // 지도 영역 내 보이는 마커 업데이트
   const updateVisibleMarkers = useCallback(() => {
+    console.log('----------------------------------------');
+    console.log('<<< updateVisibleMarkers - 지도 영역 내 보이는 마커 업데이트 >>>');
+    if (updateVisibleMarkersRef.current.isNaverReady !== isNaverReady) {
+      console.log(
+        'isNaverReady 가 ',
+        updateVisibleMarkersRef.current.isNaverReady,
+        '=>',
+        isNaverReady,
+        '로 변경되었습니다.',
+      );
+    }
+
+    if (updateVisibleMarkersRef.current.filterPlaces !== handleMapIdle) {
+      console.log(
+        'filterPlaces 가',
+        updateVisibleMarkersRef.current.filterPlaces === null ? 'null에서' : '',
+        ' =>',
+        ' 변경되었습니다.',
+      );
+    }
+
+    if (updateVisibleMarkersRef.current.isSearchMode !== resetSelectedMarkerAndInfoWindow) {
+      console.log(
+        'isSearchMode 가',
+        updateVisibleMarkersRef.current.isSearchMode,
+        '=>',
+        isSearchMode,
+        '로 변경되었습니다.',
+      );
+    }
+
+    if (updateVisibleMarkersRef.current.fitMapToMarkers !== closeSidebar) {
+      console.log(
+        'fitMapToMarkers 가',
+        updateVisibleMarkersRef.current.fitMapToMarkers === null ? 'null에서' : '',
+        ' =>',
+        ' 변경되었습니다.',
+      );
+    }
+
+    if (updateVisibleMarkersRef.current.isFavoriteMode !== closeSidebar) {
+      console.log(
+        'isFavoriteMode 가',
+        updateVisibleMarkersRef.current.isFavoriteMode,
+        '=>',
+        isFavoriteMode,
+        '로 변경되었습니다.',
+      );
+    }
+    console.log('----------------------------------------');
+
     if (!mapInstanceRef.current || !isNaverReady) return;
 
     const filtered = filterPlaces();
@@ -551,6 +629,8 @@ export const Map = () => {
 
   // 지도 이동 완료 후 핸들러
   const handleMapIdle = useCallback(() => {
+    console.log('handleMapIdle');
+
     if (selectedMarkerRef.current) {
       // 선택된 마커가 있으면 인포윈도우 열기
       const { marker, placeData } = selectedMarkerRef.current;
@@ -590,7 +670,6 @@ export const Map = () => {
     // 검색 시 선택된 마커 초기화 (범위 자동 조정을 위해)
     if (selectedMarkerRef.current) {
       resetSelectedMarkerAndInfoWindow();
-      setSelectedPlace(null);
     }
 
     updateVisibleMarkers();
@@ -792,6 +871,55 @@ export const Map = () => {
 
   // 이벤트 리스너 설정
   useEffect(() => {
+    console.log('----------------------------------------');
+    console.log('<<< useEffect - 기존 리스너 제거, 재설정 >>>');
+    if (prevUpdateCountRef.current.isNaverReady !== isNaverReady) {
+      console.log(
+        'isNaverReady 가',
+        prevUpdateCountRef.current.isNaverReady,
+        '=>',
+        isNaverReady,
+        '로 변경되었습니다.',
+      );
+    }
+
+    if (prevUpdateCountRef.current.handleMapIdle !== handleMapIdle) {
+      console.log(
+        'handleMapIdle 가',
+        prevUpdateCountRef.current.handleMapIdle === null ? 'null에서' : '',
+        ' =>',
+        ' 변경되었습니다.',
+      );
+    }
+
+    if (
+      prevUpdateCountRef.current.resetSelectedMarkerAndInfoWindow !==
+      resetSelectedMarkerAndInfoWindow
+    ) {
+      console.log(
+        'resetSelectedMarkerAndInfoWindow 가',
+        prevUpdateCountRef.current.resetSelectedMarkerAndInfoWindow === null ? 'null에서' : '',
+        ' =>',
+        ' 변경되었습니다.',
+      );
+    }
+
+    if (prevUpdateCountRef.current.closeSidebar !== closeSidebar) {
+      console.log(
+        'closeSidebar 가',
+        prevUpdateCountRef.current.closeSidebar === null ? 'null에서' : '',
+        ' =>',
+        ' 변경되었습니다.',
+      );
+    }
+    console.log('----------------------------------------');
+    prevUpdateCountRef.current = {
+      isNaverReady,
+      handleMapIdle,
+      resetSelectedMarkerAndInfoWindow,
+      closeSidebar,
+    };
+
     if (!mapInstanceRef.current || !isNaverReady || !window.naver) return;
 
     // 기존 리스너 제거
@@ -801,8 +929,9 @@ export const Map = () => {
     // 새 리스너 추가
     const idleListener = mapInstanceRef.current.addListener('idle', handleMapIdle);
     const clickListener = mapInstanceRef.current.addListener('click', () => {
+      console.log('clickListener');
+
       resetSelectedMarkerAndInfoWindow();
-      setSelectedPlace(null);
       closeSidebar();
     });
 
@@ -883,7 +1012,7 @@ export const Map = () => {
                               setIsSearchMode(false);
                               setAutoCompleteItems([]);
                               updateVisibleMarkers();
-                              isInitialSearchFit.current = false;
+                              // isInitialSearchFit.current = false;
                             }}
                           >
                             <TiDelete className="text-xl" />

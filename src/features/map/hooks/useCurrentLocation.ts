@@ -29,6 +29,10 @@ export const useCurrentLocation = () => {
         alert(
           '위치 정보 제공이 거부되었습니다.\n브라우저 설정에서 위치 정보 제공을 허용해 주세요.'
         );
+      } else if (error.code === error.POSITION_UNAVAILABLE) {
+        alert('위치 정보를 가져올 수 없습니다.');
+      } else if (error.code === error.TIMEOUT) {
+        alert('위치 정보 호출 시간이 초과되었습니다.');
       }
     };
 
