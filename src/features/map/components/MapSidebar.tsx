@@ -1,9 +1,8 @@
 import DetailPlaceContext from '@/features/map/components/DetailPlaceContext';
 import SimplePlaceCard from '@/features/map/components/SimplePlaceCard';
 import { ViewNightSpot } from '@/features/map/types/mapTypes';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { FaList } from 'react-icons/fa6';
-
 import { IoClose } from 'react-icons/io5';
 
 interface MapSidebarProps {
@@ -22,23 +21,6 @@ export const MapSidebar = ({
   onPlaceSelect,
 }: MapSidebarProps) => {
   const sidebarRef = useRef<HTMLDivElement | null>(null);
-
-  // 사이드바 외부 클릭 시 닫기
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen, onClose]);
 
   // 애니메이션 종료 후 hidden 클래스 적용
   const handleTransitionEnd = () => {
