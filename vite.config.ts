@@ -18,6 +18,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/driving': {
+        target: 'https://maps.apigw.ntruss.com/map-direction/v1',
+        changeOrigin: true,
+      },
     },
   },
 });

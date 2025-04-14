@@ -58,7 +58,7 @@ export const Map = () => {
 
   // 네이버 지도 스크립트 로드
   const [isScriptLoading, scriptError] = useScript(
-    `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${
+    `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${
       import.meta.env.VITE_NAVER_MAP_API_KEY
     }`,
   );
@@ -713,7 +713,7 @@ export const Map = () => {
       return;
     }
     setIsFavoriteMode(!isFavoriteMode);
-  }, [isFavoriteMode]);
+  }, [user, isFavoriteMode]);
 
   // 총 장소 데이터가 변경될 때 마커 생성
   useEffect(() => {
@@ -986,7 +986,7 @@ export const Map = () => {
               className="mr-2.5 flex h-8 w-8 cursor-pointer items-center justify-center border border-gray-600 bg-white text-gray-600 shadow transition-colors duration-150 active:bg-neutral-800 active:text-white"
             >
               {isFavoriteMode ? (
-                <HiStar className="h-5 w-5 text-violet-600" />
+                <HiStar className="h-5 w-5 text-amber-400" />
               ) : (
                 <HiOutlineStar className="h-5 w-5 text-gray-600 active:text-white" />
               )}

@@ -3,6 +3,10 @@
     {
       "source": "/api/:path*",
       "destination": "http://openapi.seoul.go.kr:8088/:path*"
+    },
+    {
+      "source": "/driving:path*",
+      "destination": "https://maps.apigw.ntruss.com/map-direction/v1/driving:path*"
     }
   ]
 }
