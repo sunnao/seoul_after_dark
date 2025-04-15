@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useNaverObjInitialization } from '@features/map/hooks/useNaverObjInitialization';
 import { useCurrentLocation } from '@features/map/hooks/useCurrentLocation';
 import { ApiResponse, MarkerWithData, ViewNightSpot } from '@features/map/types/mapTypes';
+import { useMapContext } from '@/features/map/context';
 
 import { MdOutlineMyLocation } from 'react-icons/md';
 import { ImSpinner2 } from 'react-icons/im';
@@ -23,7 +24,10 @@ export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<naver.maps.Map | null>(null);
   const currentMarkerRef = useRef<naver.maps.Marker | null>(null);
+  const polylineRef = useRef<naver.maps.Polyline | null>(null);
   const { user, authLoading, logout } = useAuth();
+
+  const { directionResult, isShowingPath, clearPath, setStartEndPoint } = useMapContext();
 
   // 장소 데이터 상태
   const [totalPlaceData, setTotalPlaceData] = useState<ViewNightSpot[]>([]);
@@ -71,6 +75,45 @@ export const Map = () => {
 
   // 현위치 불러오기
   const { currentLocation, isLocating, getCurrentLocation } = useCurrentLocation();
+
+  // 폴리라인 그리기 함수
+  const drawPolyline = useCallback(() => {
+    if (!isNaverReady || !mapInstanceRef.current || !directionResult) return;
+    // 기존 폴리라인 제거
+    if (polylineRef.current) {
+      polylineRef.current.setMap(null);
+      polylineRef.current = null;
+    }
+
+    const { naver } = window;
+    const { path } = directionResult;
+    const pathPoints = path.map((point) => new naver.maps.LatLng(point[1], point[0]));
+
+    // 폴리라인 생성
+    polylineRef.current = new naver.maps.Polyline({
+      path: pathPoints,
+      strokeColor: '#8905B1',
+      strokeWeight: 8,
+      strokeOpacity: 0.7,
+      strokeLineJoin: 'round',
+      startIcon: 3,
+      startIconSize: 12,
+      map: mapInstanceRef.current,
+    });
+
+    // 경로가 모두 보이도록 지도 범위 조정
+    if (pathPoints.length > 0) {
+      const bounds = new naver.maps.LatLngBounds(pathPoints[0], pathPoints[0]);
+      pathPoints.forEach((point) => bounds.extend(point));
+      mapInstanceRef.current.fitBounds(bounds, {
+        top: 20,
+        right: 50,
+        bottom: 100,
+        left: 50,
+      });
+      setIsSidebarOpen(false);
+    }
+  }, [isNaverReady, directionResult]);
 
   // 전체 장소 정보 가져오기 (API 호출)
   const fetchViewNightSpotData = useCallback(async () => {
@@ -251,10 +294,6 @@ export const Map = () => {
     // 선택된 마커 스타일 초기화
     if (selectedMarkerRef.current) {
       const { marker, placeData } = selectedMarkerRef.current;
-
-      if (isSearchMode) {
-        // marker.setMap(null);
-      }
       const iconConfig = createMarkerIcon(placeData, false);
       if (iconConfig) {
         marker.setIcon(iconConfig);
@@ -264,7 +303,7 @@ export const Map = () => {
       selectedMarkerRef.current = null;
     }
     setSelectedPlace(null);
-  }, [createMarkerIcon, isSearchMode]);
+  }, [createMarkerIcon]);
 
   // 선택된 장소에 해당하는 인포윈도우 열기
   const openInfoWindowForPlace = useCallback(() => {
@@ -314,9 +353,6 @@ export const Map = () => {
       previousCenterRef.current = mapInstanceRef.current.getCenter();
     }
 
-    // 지도 중심/줌 이동
-    console.log('moveMapToPlace~~~~~~~~~~');
-
     mapInstanceRef.current.morph(placePosition, 15, { duration: 200, easing: 'easeOutCubic' });
   }, [isNaverReady]);
 
@@ -342,6 +378,11 @@ export const Map = () => {
             markerPair.marker.setIcon(iconConfig);
           }
           markerPair.marker.setZIndex(1000);
+
+          setStartEndPoint({
+            start: currentLocation || defaultCenter,
+            end: { lat: Number(place.LA), lng: Number(place.LO) },
+          });
 
           // 지도 중심 이동 및 사이드바 열기
           moveMapToPlace();
@@ -522,6 +563,15 @@ export const Map = () => {
       if (filtered.length > 0) {
         fitMapToMarkers(filtered);
       }
+    } else if (isShowingPath) {
+      markersRef.current.forEach(({ marker, placeData }) => {
+        const isSelectedMarker = selectedMarkerRef.current?.placeData.ID === placeData.ID;
+        marker.setMap(isSelectedMarker ? mapInstanceRef.current : null);
+
+        if (isSelectedMarker) {
+          visiblePlaces.push(placeData);
+        }
+      });
     } else {
       // 일반 모드일 때는 지도 영역 내 마커만 표시
       const mapBounds = mapInstanceRef.current.getBounds();
@@ -559,7 +609,18 @@ export const Map = () => {
     }
 
     setVisiblePlacesData(visiblePlaces);
-  }, [isNaverReady, filterPlaces, isSearchMode, fitMapToMarkers, isFavoriteMode]);
+  }, [isShowingPath, isNaverReady, filterPlaces, isSearchMode, isFavoriteMode, fitMapToMarkers]);
+
+  // 경로 표시 상태가 변경될 때 폴리라인 업데이트
+  useEffect(() => {
+    if (isShowingPath) {
+      drawPolyline();
+    } else if (polylineRef.current) {
+      polylineRef.current.setMap(null);
+      polylineRef.current = null;
+    }
+    updateVisibleMarkers();
+  }, [isShowingPath, directionResult, drawPolyline, updateVisibleMarkers]);
 
   // 지도 이동 완료 후 핸들러
   const handleMapIdle = useCallback(() => {
@@ -795,6 +856,9 @@ export const Map = () => {
     const clickListener = mapInstanceRef.current.addListener('click', () => {
       resetSelectedMarkerAndInfoWindow();
       closeSidebar();
+      if (isShowingPath) {
+        clearPath();
+      }
     });
 
     const dragListener = mapInstanceRef.current.addListener('drag', () => {
@@ -823,6 +887,7 @@ export const Map = () => {
 
   return (
     <div className="map-container relative h-full">
+      <div className='text-end'>{selectedPlace?.TITLE}</div>
       {isScriptLoading && <div>지도 로딩 중...</div>}
       {scriptError && <div className="error-message">지도 로드 실패</div>}
 
@@ -961,12 +1026,20 @@ export const Map = () => {
             <button
               onClick={() => {
                 if (!isSidebarOpen) {
-                  openSidebar(null);
-                  handlePlaceSelect(null);
-                } else {
-                  if (selectedPlace) {
+                  if (isShowingPath) {
+                    setIsSidebarOpen(true);
+                  } else {
                     openSidebar(null);
                     handlePlaceSelect(null);
+                  }
+                } else {
+                  if (selectedPlace) {
+                    if (isShowingPath) {
+                      setIsSidebarOpen(false);
+                    } else {
+                      openSidebar(null);
+                      handlePlaceSelect(null);
+                    }
                   } else {
                     closeSidebar();
                   }
@@ -975,7 +1048,7 @@ export const Map = () => {
               className="btn flex cursor-pointer items-center justify-center rounded-4xl border border-neutral-300 bg-white px-4 py-2 shadow-lg"
             >
               <FaList className="h-4 w-4 text-gray-600" />
-              <span className="text-[14px] text-gray-600">목록보기</span>
+              <span className="text-[14px] text-gray-600">{isShowingPath ? '경로보기' : '목록보기'}</span>
             </button>
           </div>
 

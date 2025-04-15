@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react';
 
 export const useCurrentLocation = () => {
-  const [currentLocation, setCurrentLocation] = useState<naver.maps.CoordLiteral | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<naver.maps.LatLngObjectLiteral | null>(
+    null,
+  );
   const [isLocating, setIsLocating] = useState<boolean>(false);
 
   const getCurrentLocation = useCallback(() => {
