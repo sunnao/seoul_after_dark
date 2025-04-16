@@ -32,11 +32,13 @@ export interface MapContextType {
   directionResult: DirectionPathResponse | null;
   isShowingPath: boolean;
   startEndPoint: StartEndPoint | null;
+  pathPointIndex: number | null;
 
   // 길찾기 관련 함수
   showPath: (directionResult: DirectionPathResponse) => void;
   clearPath: () => void;
   setStartEndPoint: (startEndPoint: StartEndPoint) => void;
+	setPathPointIndex: (pointIndex: number) => void;
 }
 
 export const MapContext = createContext<MapContextType | null>(null);

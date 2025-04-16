@@ -6,7 +6,7 @@ import { useCurrentLocation } from '@features/map/hooks/useCurrentLocation';
 import { ApiResponse, MarkerWithData, ViewNightSpot } from '@features/map/types/mapTypes';
 import { useMapContext } from '@/features/map/context';
 
-import { MdOutlineMyLocation } from 'react-icons/md';
+import { MdAltRoute, MdOutlineMyLocation } from 'react-icons/md';
 import { ImSpinner2 } from 'react-icons/im';
 import { FaChevronUp, FaList, FaSearch } from 'react-icons/fa';
 import { renderToString } from 'react-dom/server';
@@ -27,7 +27,8 @@ export const Map = () => {
   const polylineRef = useRef<naver.maps.Polyline | null>(null);
   const { user, authLoading, logout } = useAuth();
 
-  const { directionResult, isShowingPath, clearPath, setStartEndPoint } = useMapContext();
+  const { directionResult, isShowingPath, clearPath, setStartEndPoint, pathPointIndex } =
+    useMapContext();
 
   // 장소 데이터 상태
   const [totalPlaceData, setTotalPlaceData] = useState<ViewNightSpot[]>([]);
@@ -355,6 +356,32 @@ export const Map = () => {
 
     mapInstanceRef.current.morph(placePosition, 15, { duration: 200, easing: 'easeOutCubic' });
   }, [isNaverReady]);
+
+  // 지도 중심 이동
+  const moveToPathPoint = useCallback(
+    (pointIndex: number) => {
+      if (!isNaverReady || !mapInstanceRef.current || !directionResult) return;
+
+      const { naver } = window;
+      const coordinates = directionResult.path[pointIndex];
+
+      const position = new naver.maps.LatLng(coordinates[1], coordinates[0]);
+
+      // 이동 및 확대
+      mapInstanceRef.current.morph(position, 17, {
+        duration: 400,
+        easing: 'easeOutCubic',
+      });
+    },
+    [isNaverReady, directionResult],
+  );
+
+  // pathPointIndex 변경 감지 및 지도 이동
+  useEffect(() => {
+    if (pathPointIndex !== null && directionResult) {
+      moveToPathPoint(pathPointIndex);
+    }
+  }, [pathPointIndex, directionResult, moveToPathPoint]);
 
   // 장소 선택 핸들러
   const handlePlaceSelect = useCallback(
@@ -1047,10 +1074,21 @@ export const Map = () => {
               }}
               className="btn flex cursor-pointer items-center justify-center rounded-4xl border border-neutral-300 bg-white px-4 py-2 shadow-lg"
             >
-              <FaList className="h-4 w-4 text-gray-600" />
-              <span className="text-[14px] text-gray-600">
-                {isShowingPath ? '경로보기' : '목록보기'}
-              </span>
+              {isShowingPath ? (
+                <>
+                  <MdAltRoute className="h-4 w-4 text-gray-600" />
+                  <span className="text-[14px] text-gray-600">
+                    경로보기
+                  </span>
+                </>
+              ) : (
+                <>
+                  <FaList className="h-4 w-4 text-gray-600" />
+                  <span className="text-[14px] text-gray-600">
+                    목록보기
+                  </span>
+                </>
+              )}
             </button>
           </div>
 

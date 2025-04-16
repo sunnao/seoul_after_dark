@@ -2,7 +2,7 @@ import { useMapContext } from '@/features/map/context';
 import { ViewNightSpot } from '@/features/map/types/mapTypes';
 
 export const DirectionContents = ({ selectedPlace }: { selectedPlace: ViewNightSpot }) => {
-  const { directionResult, startEndPoint } = useMapContext();
+  const { directionResult, startEndPoint, setPathPointIndex } = useMapContext();
 
   function formatDistance(meters: number): string {
     if (meters >= 1000) {
@@ -52,25 +52,28 @@ export const DirectionContents = ({ selectedPlace }: { selectedPlace: ViewNightS
       </div>
 
       <div className="divider" />
-      <div className="ml-2">상세경로</div>
-      <ul className="relative flex flex-col">
+      <div className="ml-1">상세경로</div>
+      <ul className="relative mt-2 flex flex-col">
         {directionResult?.guide.map((guide, index) => (
-          <li key={index} className="relative flex">
-            {/* 왼쪽 아이콘 + 선 */}
+          <li
+            onClick={() => setPathPointIndex(guide.pointIndex)}
+            key={index}
+            className="relative flex cursor-pointer hover:bg-base-content/10 pt-2 px-2"
+          >
+            {/* Step Circle */}
             <div className="relative flex w-8 min-w-8 flex-col items-center">
-              {/* 동그라미 */}
               <div className="z-10 flex h-8 w-8 items-center justify-center rounded-full bg-primary font-bold text-white">
                 {index + 1}
               </div>
-
-              {/* 세로선 */}
-              {index !== directionResult.guide.length - 1 && (
-                <div className="absolute top-8 bottom-0 left-1/2 z-0 w-1.5 -translate-x-1/2 bg-primary" />
-              )}
             </div>
+            
+            {/* Step Line */}
+            {index !== directionResult.guide.length - 1 && (
+              <div className="absolute top-8 -bottom-8 left-6 z-1 w-1.5 -translate-x-1/2 bg-primary" />
+            )}
 
-            {/* 오른쪽 텍스트 */}
-            <div className="ml-4 pb-2">
+            {/* Contents */}
+            <div className="mb-3 ml-4">
               <p className="text-start">{guide.instructions}</p>
               <span className="text-sm text-gray-500">{formatDistance(guide.distance)}</span>
             </div>
