@@ -12,18 +12,19 @@ export interface StartEndPoint {
 }
 
 export interface DirectionPathResponse {
-	path: number[][];
+  path: number[][];
   summary: {
-		distance: number;
-		duration: number;
-		departureTime: string;
-	},
-	guide: Array<{
-		distance: number;
-		duration: number;
-		pointIndex: number;
-		type: number;
-	}>;
+    distance: number;
+    duration: number;
+    departureTime: string;
+  };
+  guide: Array<{
+    distance: number;
+    duration: number;
+    pointIndex: number;
+    instructions: string;
+    type: number;
+  }>;
 }
 
 export interface MapContextType {

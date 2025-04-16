@@ -92,7 +92,7 @@ export const Map = () => {
     // 폴리라인 생성
     polylineRef.current = new naver.maps.Polyline({
       path: pathPoints,
-      strokeColor: '#8905B1',
+      strokeColor: '#5553f9',
       strokeWeight: 8,
       strokeOpacity: 0.7,
       strokeLineJoin: 'round',
@@ -415,7 +415,8 @@ export const Map = () => {
       moveMapToPlace,
       openSidebar,
       openInfoWindowForPlace,
-      //   closeSidebar,
+      currentLocation,
+      setStartEndPoint,
     ],
   );
 
@@ -887,7 +888,6 @@ export const Map = () => {
 
   return (
     <div className="map-container relative h-full">
-      <div className='text-end'>{selectedPlace?.TITLE}</div>
       {isScriptLoading && <div>지도 로딩 중...</div>}
       {scriptError && <div className="error-message">지도 로드 실패</div>}
 
@@ -1048,7 +1048,9 @@ export const Map = () => {
               className="btn flex cursor-pointer items-center justify-center rounded-4xl border border-neutral-300 bg-white px-4 py-2 shadow-lg"
             >
               <FaList className="h-4 w-4 text-gray-600" />
-              <span className="text-[14px] text-gray-600">{isShowingPath ? '경로보기' : '목록보기'}</span>
+              <span className="text-[14px] text-gray-600">
+                {isShowingPath ? '경로보기' : '목록보기'}
+              </span>
             </button>
           </div>
 

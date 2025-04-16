@@ -1,9 +1,11 @@
-import DetailPlaceContext from '@/features/map/components/DetailPlaceContext';
+import { DetailPlaceContents } from '@/features/map/components/DetailPlaceContents';
 import SimplePlaceCard from '@/features/map/components/SimplePlaceCard';
 import { ViewNightSpot } from '@/features/map/types/mapTypes';
+import { useMapContext } from '@/features/map/context';
 import { useRef } from 'react';
 import { FaList } from 'react-icons/fa6';
 import { IoClose } from 'react-icons/io5';
+import { DirectionContents } from '@/features/map/components/DirectionContents';
 
 interface MapSidebarProps {
   isOpen: boolean;
@@ -21,7 +23,7 @@ export const MapSidebar = ({
   onPlaceSelect,
 }: MapSidebarProps) => {
   const sidebarRef = useRef<HTMLDivElement | null>(null);
-
+  const { isShowingPath } = useMapContext();
   // 애니메이션 종료 후 hidden 클래스 적용
   const handleTransitionEnd = () => {
     if (!isOpen && sidebarRef.current) {
@@ -42,15 +44,19 @@ export const MapSidebar = ({
       >
         {/* 사이드바 헤더 */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-base-200 p-4">
-          <h3 className="text-lg font-semibold">
-            {selectedPlace ? (
-              <div onClick={() => onPlaceSelect(null)}>
-                <FaList className="ml-2 h-4 w-4" />
-              </div>
-            ) : (
-              `장소 목록 (${places.length}건)`
-            )}
-          </h3>
+          {!isShowingPath ? (
+            <h3 className="text-lg font-semibold">
+              {selectedPlace ? (
+                <div onClick={() => onPlaceSelect(null)}>
+                  <FaList className="ml-2 h-4 w-4" />
+                </div>
+              ) : (
+                `장소 목록 (${places.length}건)`
+              )}
+            </h3>
+          ) : (
+            <span />
+          )}
           <button onClick={onClose} className="p-2">
             <IoClose className="h-5 w-5" />
           </button>
@@ -59,7 +65,11 @@ export const MapSidebar = ({
         {/* 사이드바 내용 */}
         <div className="h-[calc(100%-60px)] overflow-y-auto p-4">
           {selectedPlace ? (
-            <DetailPlaceContext selectedPlace={selectedPlace} />
+            isShowingPath ? (
+              <DirectionContents selectedPlace={selectedPlace} />
+            ) : (
+              <DetailPlaceContents selectedPlace={selectedPlace} />
+            )
           ) : (
             <ul className="space-y-2">
               {places.map((place, index) => (

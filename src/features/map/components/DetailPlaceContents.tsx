@@ -16,7 +16,7 @@ interface NaverDirectionResponse {
   };
 }
 
-const DetailPlaceContext = ({ selectedPlace }: { selectedPlace: ViewNightSpot }) => {
+export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNightSpot }) => {
   const { addFavorite, deleteFavorite } = useAuth();
   const { clearPath, showPath, startEndPoint } = useMapContext();
 
@@ -41,7 +41,7 @@ const DetailPlaceContext = ({ selectedPlace }: { selectedPlace: ViewNightSpot })
           goal: `${startEndPoint?.end.lng},${startEndPoint?.end.lat}`,
         },
       });
-      
+
       if (result.data.code === 0) {
         showPath(result.data.route.traoptimal?.[0] as DirectionPathResponse);
       } else {
@@ -75,7 +75,7 @@ const DetailPlaceContext = ({ selectedPlace }: { selectedPlace: ViewNightSpot })
           <h4 className="mb-2 text-xl font-bold">{selectedPlace.TITLE}</h4>
         </div>
         <p className="mb-2 text-gray-400">{selectedPlace.ADDR}</p>
-        <button className="btn btn-sm" onClick={fetchDirectionAPI}>
+        <button className="btn btn-sm btn-primary" onClick={fetchDirectionAPI}>
           길찾기
         </button>
         {selectedPlace.OPERATING_TIME && (
@@ -109,4 +109,3 @@ const DetailPlaceContext = ({ selectedPlace }: { selectedPlace: ViewNightSpot })
   );
 };
 
-export default DetailPlaceContext;
