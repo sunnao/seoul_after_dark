@@ -53,7 +53,7 @@ export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNigh
       alert('경로를 가져오는 중 오류가 발생했습니다.');
       clearPath();
     }
-  }, []);
+  }, [startEndPoint]);
 
   return (
     <>
