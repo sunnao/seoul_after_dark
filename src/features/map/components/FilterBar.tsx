@@ -1,7 +1,7 @@
 import { SUBJECTS } from '@/features/map/constants/subjects';
 import { Subject } from '@/features/map/types/mapTypes';
 
-interface FilterChipsProps {
+interface FilterBarProps {
   onFilterChange: (activeFilters: string[]) => void;
   activeFilters: string[];
 }
@@ -10,7 +10,7 @@ interface SubjectForFilter extends Subject {
   filterClassName: string;
 }
 
-export const FilterChips = ({ onFilterChange, activeFilters }: FilterChipsProps) => {
+export const FilterBar = ({ onFilterChange, activeFilters }: FilterBarProps) => {
 
 	const getFilterStyle = (subject: string) => {
     switch (subject) {
@@ -63,7 +63,10 @@ export const FilterChips = ({ onFilterChange, activeFilters }: FilterChipsProps)
               ? 'bg-neutral-800 text-white'
               : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
           }`}
-          onClick={() => toggleFilter(filter.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleFilter(filter.id);
+          }}
         >
           {filter.icon && (
             <span

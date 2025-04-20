@@ -6,19 +6,19 @@ import { useCurrentLocation } from '@features/map/hooks/useCurrentLocation';
 import { ApiResponse, MarkerWithData, ViewNightSpot } from '@features/map/types/mapTypes';
 import { useMapContext } from '@/features/map/context';
 
-import { MdAltRoute, MdOutlineMyLocation } from 'react-icons/md';
+import { MdOutlineMyLocation } from 'react-icons/md';
 import { ImSpinner2 } from 'react-icons/im';
-import { FaChevronUp, FaList, FaSearch } from 'react-icons/fa';
 import { renderToString } from 'react-dom/server';
 import { MapSidebar } from '@/features/map/components/MapSidebar';
-import { FilterChips } from '@/features/map/components/FilterChips';
-import { FiFilter } from 'react-icons/fi';
 import { SUBJECTS } from '@/features/map/constants/subjects';
-import parse from 'html-react-parser';
-import { TiDelete } from 'react-icons/ti';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { HiStar } from 'react-icons/hi2';
-import { HiOutlineStar } from 'react-icons/hi';
+import { MapControls } from '@/features/map/components/MapControls';
+import { FavoriteViewBtn } from '@/features/map/components/FavoriteViewBtn';
+import { ListViewBtn } from '@/features/map/components/ListViewBtn';
+import { SearchFilterContainer } from '@/features/map/components/SearchFilterContainer';
+import { SearchBar } from '@/features/map/components/SearchBar';
+import { FilterBar } from '@/features/map/components/FilterBar';
 
 export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
@@ -46,8 +46,6 @@ export const Map = () => {
   // UI 상태
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [selectedPlace, setSelectedPlace] = useState<ViewNightSpot | null>(null);
-  const [activeTab, setActiveTab] = useState<'filter' | 'search'>('filter');
-  const [isContainerShow, setIsContainerShow] = useState<boolean>(true);
   const [isFavoriteMode, setIsFavoriteMode] = useState<boolean>(false);
 
   // 검색 관련 상태
@@ -69,7 +67,7 @@ export const Map = () => {
   );
 
   // 기본 중심 좌표 (서울시청)
-  const defaultCenter: naver.maps.LatLngLiteral = { lat: 37.5666103, lng: 126.9783882 };
+  const defaultCenter = useRef<naver.maps.LatLngObjectLiteral>({ lat: 37.5666103, lng: 126.9783882 });
 
   // 네이버 객체 초기화
   const { isNaverReady } = useNaverObjInitialization(isScriptLoading, scriptError);
@@ -407,7 +405,7 @@ export const Map = () => {
           markerPair.marker.setZIndex(1000);
 
           setStartEndPoint({
-            start: currentLocation || defaultCenter,
+            start: currentLocation || defaultCenter.current,
             end: { lat: Number(place.LA), lng: Number(place.LO) },
           });
 
@@ -421,8 +419,6 @@ export const Map = () => {
       } else {
         // 장소 선택 해제 시 이전 위치로 복귀
         if (previousCenterRef.current && previousZoomRef.current && mapInstanceRef.current) {
-          console.log('장소 선택 해제 시 이전 위치로 복귀');
-
           mapInstanceRef.current.morph(previousCenterRef.current, previousZoomRef.current, {
             duration: 200,
             easing: 'easeOutCubic',
@@ -431,8 +427,6 @@ export const Map = () => {
           previousCenterRef.current = null;
           previousZoomRef.current = null;
         }
-
-        // closeSidebar();
       }
     },
     [
@@ -721,56 +715,7 @@ export const Map = () => {
     [activeFilters, totalPlaceData, isFavoriteMode],
   );
 
-  // 검색어 변경 핸들러
-  const handleSearchInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newKeyword = e.target.value;
-      setSearchKeyword(newKeyword);
-      updateAutoComplete(newKeyword);
-    },
-    [updateAutoComplete],
-  );
-
-  // 자동완성 항목 선택 핸들러
-  const handleAutoCompleteSelect = useCallback(
-    (place: ViewNightSpot) => {
-      setSearchKeyword(place.TITLE);
-      setIsAutoCompleteVisible(false);
-      setIsSearchMode(true);
-
-      // 해당 장소 선택
-      handlePlaceSelect(place);
-    },
-    [handlePlaceSelect],
-  );
-
-  // 검색창 외부 클릭 시 자동완성 닫기
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setIsAutoCompleteVisible(false);
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, []);
-
-  // 탭 변경 핸들러
-  const handleTabChange = useCallback(
-    (tab: 'filter' | 'search') => {
-      if (activeTab !== tab) {
-        setActiveTab(tab);
-
-        if (tab === 'search') {
-          setIsAutoCompleteVisible(false);
-        }
-      }
-    },
-    [activeTab],
-  );
-
-  // 사용자 정의 컨트롤러 초기화 (현위치, 목록보기 버튼)
+  // 사용자 정의 컨트롤러 초기화 (현위치)
   const initCustomController = useCallback(() => {
     if (!mapInstanceRef.current || !isNaverReady || !window.naver) return;
 
@@ -803,6 +748,26 @@ export const Map = () => {
     }
     setIsFavoriteMode(!isFavoriteMode);
   }, [user, isFavoriteMode]);
+
+  const onHandleListViewBtn = useCallback(() => {
+    if (!isSidebarOpen) {
+      setIsSidebarOpen(true);
+      if (!isShowingPath) {
+        handlePlaceSelect(null);
+      }
+    } else {
+      if (selectedPlace) {
+        if (isShowingPath) {
+          setIsSidebarOpen(false);
+        } else {
+          setIsSidebarOpen(true);
+          handlePlaceSelect(null);
+        }
+      } else {
+        setIsSidebarOpen(false);
+      }
+    }
+  }, [handlePlaceSelect, isShowingPath, isSidebarOpen, selectedPlace]);
 
   // 총 장소 데이터가 변경될 때 마커 생성
   useEffect(() => {
@@ -843,7 +808,7 @@ export const Map = () => {
       const { naver } = window;
 
       const mapOptions = {
-        center: currentLocation ?? defaultCenter,
+        center: currentLocation ?? defaultCenter.current,
         mapDataControl: false,
         logoControlOptions: {
           position: naver.maps.Position.LEFT_BOTTOM,
@@ -900,7 +865,7 @@ export const Map = () => {
         naver.maps.Event.removeListener(dragListener);
       }
     };
-  }, [isNaverReady, handleMapIdle, resetSelectedMarkerAndInfoWindow, closeSidebar]);
+  }, [isNaverReady, handleMapIdle, resetSelectedMarkerAndInfoWindow, closeSidebar, isShowingPath, clearPath]);
 
   // 컴포넌트 마운트 시 실행되는 코드들
   useEffect(() => {
@@ -920,203 +885,47 @@ export const Map = () => {
 
       <div ref={mapDivRef} className={`h-full w-full ${isNaverReady ? 'block' : 'hidden'}`} />
 
-      {isNaverReady && (
-        <>
-          <div className="absolute top-2 right-0 left-0 z-10 mx-auto flex w-[90%] max-w-[800px] gap-2 md:w-[80%]">
-            <div
-              onClick={() => setIsContainerShow(!isContainerShow)}
-              className="min-w-[20px] self-start rounded-md bg-white/90 p-1 shadow-md"
-            >
-              <FaChevronUp
-                className={`h-full w-full text-neutral-600 transition-all duration-300 ${isContainerShow ? '' : 'rotate-180'}`}
-              />
-            </div>
-            <div className={`${isContainerShow ? 'block' : 'hidden'} flex w-full gap-2`}>
-              {/* 검색 영역 */}
-              <div
-                className={`flex items-center rounded-lg bg-white/90 p-2 shadow-md transition-all duration-300 ease-in-out ${
-                  activeTab === 'search' ? 'flex-grow' : 'w-8 md:w-10'
-                }`}
-                onClick={() => activeTab !== 'search' && setActiveTab('search')}
-              >
-                {activeTab === 'search' ? (
-                  <>
-                    {/* 검색창 */}
-                    <div className="flex w-full items-center gap-2">
-                      <FaSearch
-                        className={`h-5 w-5 text-neutral-500 ${activeTab === 'search' && 'ml-1 sm:ml-3'}`}
-                      />
-                      <div className="flex flex-grow items-center">
-                        <input
-                          type="text"
-                          placeholder="장소명 또는 주소 검색"
-                          className="caret-grat-800 w-full border-none bg-transparent text-gray-700 focus:outline-none"
-                          value={searchKeyword}
-                          onChange={handleSearchInputChange}
-                          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleTabChange('search');
-                            if (searchKeyword.length >= 2) {
-                              setIsAutoCompleteVisible(true);
-                            }
-                          }}
-                        />
-                        {searchKeyword && (
-                          <button
-                            className="mr-1 p-1 text-gray-500 hover:text-gray-700"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSearchKeyword('');
-                              setIsSearchMode(false);
-                              setAutoCompleteItems([]);
-                              updateVisibleMarkers();
-                              // isInitialSearchFit.current = false;
-                            }}
-                          >
-                            <TiDelete className="text-xl" />
-                          </button>
-                        )}
-
-                        <button
-                          className="btn rounded-full bg-neutral-800 px-4 py-2 text-white btn-xs md:btn-sm"
-                          onClick={handleSearch}
-                        >
-                          <FaSearch className="md:h-4 md:w-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* 자동완성 */}
-                    {isAutoCompleteVisible && (
-                      <div
-                        className="absolute top-full right-0 left-0 z-20 mt-1 max-h-60 overflow-y-auto rounded-lg bg-white/95 shadow-lg"
-                        style={{ width: 'calc(100% - 31px)', marginLeft: '31px' }}
-                      >
-                        {autoCompleteItems.length > 0 ? (
-                          autoCompleteItems.map((place, index) => (
-                            <div
-                              key={`${place.TITLE}-${index}`}
-                              className="flex cursor-pointer items-center gap-2 px-4 py-2 hover:bg-gray-100"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAutoCompleteSelect(place);
-                              }}
-                            >
-                              <div>{parse(createMarkerIcon(place, false)?.content || '')}</div>
-                              <div>
-                                <div className="font-medium text-gray-800">{place.TITLE}</div>
-                                <div className="text-sm text-gray-500">{place.ADDR}</div>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="px-4 py-2 text-gray-500">일치하는 장소가 없습니다.</div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <button className="flex h-full w-full items-center justify-center">
-                    <FaSearch className="h-5 w-5 text-neutral-500" />
-                  </button>
-                )}
-              </div>
-
-              {/* 필터영역 */}
-              <div
-                className={`overflow-hidden rounded-lg bg-white/90 shadow-md transition-all duration-300 ease-in-out ${
-                  activeTab === 'filter' ? 'flex-grow' : 'w-7 shrink-0 md:w-10'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleTabChange('filter');
-                }}
-              >
-                <div className={`${activeTab === 'filter' ? 'block' : 'hidden'}`}>
-                  <FilterChips onFilterChange={handleFilterChange} activeFilters={activeFilters} />
-                </div>
-                <div
-                  className={`flex h-full min-h-[50px] items-center justify-center ${activeTab === 'filter' ? 'hidden' : 'block'}`}
-                >
-                  <FiFilter className="h-5 text-neutral-500 sm:w-5" />
-                  {activeFilters.length !== SUBJECTS.length && (
-                    <div className="absolute top-2 right-2 h-2 w-2 rounded bg-violet-600" />
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 목록보기 버튼 */}
-          <div className="absolute bottom-5 left-1/2 z-10 -translate-x-1/2">
-            <button
-              onClick={() => {
-                if (!isSidebarOpen) {
-                  if (isShowingPath) {
-                    setIsSidebarOpen(true);
-                  } else {
-                    openSidebar(null);
-                    handlePlaceSelect(null);
-                  }
-                } else {
-                  if (selectedPlace) {
-                    if (isShowingPath) {
-                      setIsSidebarOpen(false);
-                    } else {
-                      openSidebar(null);
-                      handlePlaceSelect(null);
-                    }
-                  } else {
-                    closeSidebar();
-                  }
-                }
-              }}
-              className="btn flex cursor-pointer items-center justify-center rounded-4xl border border-neutral-300 bg-white px-4 py-2 shadow-lg"
-            >
-              {isShowingPath ? (
-                <>
-                  <MdAltRoute className="h-4 w-4 text-gray-600" />
-                  <span className="text-[14px] text-gray-600">
-                    경로보기
-                  </span>
-                </>
-              ) : (
-                <>
-                  <FaList className="h-4 w-4 text-gray-600" />
-                  <span className="text-[14px] text-gray-600">
-                    목록보기
-                  </span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* 즐겨찾기 모드 버튼 */}
-          <div className="absolute right-0 bottom-5 z-10">
-            <button
-              onClick={onHandleFavoriteMode}
-              className="mr-2.5 flex h-8 w-8 cursor-pointer items-center justify-center border border-gray-600 bg-white text-gray-600 shadow transition-colors duration-150 active:bg-neutral-800 active:text-white"
-            >
-              {isFavoriteMode ? (
-                <HiStar className="h-5 w-5 text-amber-400" />
-              ) : (
-                <HiOutlineStar className="h-5 w-5 text-gray-600 active:text-white" />
-              )}
-            </button>
-          </div>
-        </>
-      )}
-
       {(isLocating || isLoadingPlaces) && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex-col justify-center align-middle">
           <ImSpinner2 className="h-10 w-10 animate-spin text-violet-600" />
         </div>
       )}
 
+      <MapControls
+        searchAndFilter={
+          <SearchFilterContainer
+            searchBar={
+              <SearchBar
+                searchKeyword={searchKeyword}
+                setSearchKeyword={setSearchKeyword}
+                autoCompleteItems={autoCompleteItems}
+                setAutoCompleteItems={setAutoCompleteItems}
+                isAutoCompleteVisible={isAutoCompleteVisible}
+                setIsAutoCompleteVisible={setIsAutoCompleteVisible}
+                setIsSearchMode={setIsSearchMode}
+                handlePlaceSelect={handlePlaceSelect}
+                handleSearch={handleSearch}
+                updateAutoComplete={updateAutoComplete}
+                updateVisibleMarkers={updateVisibleMarkers}
+                createMarkerIcon={createMarkerIcon}
+              />
+            }
+            filterBar={
+              <FilterBar onFilterChange={handleFilterChange} activeFilters={activeFilters} />
+            }
+          />
+        }
+        listViewBtn={<ListViewBtn onHandleListViewBtn={onHandleListViewBtn} />}
+        favoriteViewBtn={
+          <FavoriteViewBtn
+            isFavoriteMode={isFavoriteMode}
+            onHandleFavoriteMode={onHandleFavoriteMode}
+          />
+        }
+      />
       <MapSidebar
         isOpen={isSidebarOpen}
-        onClose={closeSidebar}
+        onClose={() => setIsSidebarOpen(false)}
         places={visiblePlacesData}
         selectedPlace={selectedPlace}
         onPlaceSelect={handlePlaceSelect}
