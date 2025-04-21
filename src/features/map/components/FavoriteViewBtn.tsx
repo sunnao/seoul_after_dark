@@ -1,14 +1,21 @@
 import { HiStar, HiOutlineStar } from 'react-icons/hi';
+import { useMapContext } from '@/features/map/context';
+import { useCallback } from 'react';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 
-interface FavoriteViewBtnProps {
-	isFavoriteMode: boolean;
-	onHandleFavoriteMode: () => void;
-}
+export const FavoriteViewBtn = () => {
+	const { isFavoriteMode, setIsFavoriteMode } = useMapContext();
+	const { user, logout } = useAuth();
+	
+	const onHandleFavoriteMode = useCallback(() => {
+    if (!user) {
+      logout();
+      alert('로그인이 필요한 기능입니다.');
+      return;
+    }
+    setIsFavoriteMode(!isFavoriteMode);
+  }, [user, setIsFavoriteMode, isFavoriteMode, logout]);
 
-export const FavoriteViewBtn = ({
-	isFavoriteMode,
-	onHandleFavoriteMode,
-}: FavoriteViewBtnProps) => {
   return (
     <button
       onClick={onHandleFavoriteMode}

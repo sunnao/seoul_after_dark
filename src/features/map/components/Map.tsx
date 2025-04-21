@@ -760,15 +760,6 @@ export const Map = () => {
     currentLocationButton.setMap(mapInstanceRef.current);
   }, [isNaverReady, getCurrentLocation]);
 
-  const onHandleFavoriteMode = useCallback(() => {
-    if (!user) {
-      logout();
-      alert('로그인이 필요한 기능입니다.');
-      return;
-    }
-    setIsFavoriteMode(!isFavoriteMode);
-  }, [user, isFavoriteMode]);
-
   const onHandleListViewBtn = useCallback(() => {
     if (!isSidebarOpen) {
       setIsSidebarOpen(true);
@@ -941,12 +932,7 @@ export const Map = () => {
           />
         }
         listViewBtn={<ListViewBtn onHandleListViewBtn={onHandleListViewBtn} />}
-        favoriteViewBtn={
-          <FavoriteViewBtn
-            isFavoriteMode={isFavoriteMode}
-            onHandleFavoriteMode={onHandleFavoriteMode}
-          />
-        }
+        favoriteViewBtn={<FavoriteViewBtn />}
       />
       <MapSidebar
         isOpen={isSidebarOpen}
