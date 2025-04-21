@@ -1,8 +1,8 @@
-import { useMapContext } from '@/features/map/context';
+import { useMapDirectionContext } from '@/features/map/context';
 import { ViewNightSpot } from '@/features/map/types/mapTypes';
 
 export const DirectionContents = ({ selectedPlace }: { selectedPlace: ViewNightSpot }) => {
-  const { directionResult, startEndPoint, setPathPointIndex } = useMapContext();
+  const { directionResult, startEndPoint, setPathPointIndex } = useMapDirectionContext();
 
   function formatDistance(meters: number): string {
     if (meters >= 1000) {

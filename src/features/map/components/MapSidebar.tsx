@@ -1,7 +1,7 @@
 import { DetailPlaceContents } from '@/features/map/components/DetailPlaceContents';
 import SimplePlaceCard from '@/features/map/components/SimplePlaceCard';
 import { ViewNightSpot } from '@/features/map/types/mapTypes';
-import { useMapContext } from '@/features/map/context';
+import { useMapDirectionContext } from '@/features/map/context';
 import { useRef } from 'react';
 import { FaList } from 'react-icons/fa6';
 import { IoClose } from 'react-icons/io5';
@@ -23,7 +23,7 @@ export const MapSidebar = ({
   onPlaceSelect,
 }: MapSidebarProps) => {
   const sidebarRef = useRef<HTMLDivElement | null>(null);
-  const { isShowingPath } = useMapContext();
+  const { isShowingPath } = useMapDirectionContext();
   // 애니메이션 종료 후 hidden 클래스 적용
   const handleTransitionEnd = () => {
     if (!isOpen && sidebarRef.current) {

@@ -1,13 +1,13 @@
 import { FaList } from 'react-icons/fa';
 import { MdAltRoute } from 'react-icons/md';
-import { useMapContext } from '@/features/map/context';
+import { useMapDirectionContext } from '@/features/map/context';
 
 interface ListViewBtnProps {
   onHandleListViewBtn: () => void;
 }
 
 export const ListViewBtn = ({ onHandleListViewBtn }: ListViewBtnProps) => {
-  const { isShowingPath } = useMapContext();
+	const { isShowingPath } = useMapDirectionContext();
 
   return (
     <button

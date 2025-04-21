@@ -3,9 +3,9 @@ import parse from 'html-react-parser';
 import { HiOutlineStar, HiStar } from 'react-icons/hi2';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import axios from 'axios';
-import { useMapContext } from '@/features/map/context';
+import { useMapDirectionContext } from '@/features/map/context';
 import { useCallback } from 'react';
-import { DirectionPathResponse } from '@/features/map/context/MapContext';
+import { DirectionPathResponse } from '@/features/map/context/MapDirectionContext';
 import { FaRegClock } from 'react-icons/fa';
 import { HiOutlinePhone } from 'react-icons/hi';
 import { PiLinkSimpleBold } from 'react-icons/pi';
@@ -22,7 +22,7 @@ interface NaverDirectionResponse {
 
 export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNightSpot }) => {
   const { addFavorite, deleteFavorite } = useAuth();
-  const { clearPath, showPath, startEndPoint } = useMapContext();
+  const { clearPath, showPath, startEndPoint } = useMapDirectionContext();
 
   const toogleFavorite = (isAddFavoriteMode: boolean) => {
     if (isAddFavoriteMode) {

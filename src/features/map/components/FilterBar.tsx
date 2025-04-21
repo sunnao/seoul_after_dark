@@ -1,18 +1,16 @@
 import { SUBJECTS } from '@/features/map/constants/subjects';
 import { Subject } from '@/features/map/types/mapTypes';
-
-interface FilterBarProps {
-  onFilterChange: (activeFilters: string[]) => void;
-  activeFilters: string[];
-}
+import { useMapContext } from '@/features/map/context';
+import { useCallback } from 'react';
 
 interface SubjectForFilter extends Subject {
   filterClassName: string;
 }
 
-export const FilterBar = ({ onFilterChange, activeFilters }: FilterBarProps) => {
+export const FilterBar = () => {
+  const { activeFilters, setActiveFilters } = useMapContext();
 
-	const getFilterStyle = (subject: string) => {
+  const getFilterStyle = (subject: string) => {
     switch (subject) {
       case '문화/체육':
       case '공원/광장':
@@ -26,12 +24,12 @@ export const FilterBar = ({ onFilterChange, activeFilters }: FilterBarProps) => 
         return '';
     }
   };
-	
-	const filters: SubjectForFilter[] = SUBJECTS.map((subject) => ({
+
+  const filters: SubjectForFilter[] = SUBJECTS.map((subject) => ({
     ...subject,
     filterClassName: getFilterStyle(subject.id),
   }));
-	
+
   const toggleFilter = (filterId: string) => {
     const filterAll = filters.map((filter) => filter.id);
 
@@ -53,6 +51,11 @@ export const FilterBar = ({ onFilterChange, activeFilters }: FilterBarProps) => 
     return onFilterChange(newFilters);
   };
 
+  // 필터 변경 핸들러
+  const onFilterChange = useCallback((filters: string[]) => {
+    setActiveFilters(filters);
+  }, []);
+
   return (
     <div className="flex max-w-full flex-wrap items-center justify-center gap-2 rounded-lg bg-white/90 p-3 shadow-md">
       {filters.map((filter) => (
@@ -69,9 +72,7 @@ export const FilterBar = ({ onFilterChange, activeFilters }: FilterBarProps) => 
           }}
         >
           {filter.icon && (
-            <span
-              className={`flex items-center justify-center ${filter.filterClassName}`}
-            >
+            <span className={`flex items-center justify-center ${filter.filterClassName}`}>
               {filter.icon}
             </span>
           )}
