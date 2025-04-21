@@ -29,7 +29,10 @@ export const DirectionContents = ({ selectedPlace }: { selectedPlace: ViewNightS
 
   return (
     <>
-      <div className="flex items-center">
+    <div className="bg-base-100 text-base-content">
+      {/* 경로 요약 정보 */}
+        <div className="border-b-1 border-base-content/10 bg-base-300/80 p-6">
+        <div className="flex items-center">
         <h4 className="mb-2 text-xl font-bold">
           {startEndPoint?.start?.lat === 37.5666103 && startEndPoint?.start?.lng === 126.9783882
             ? '서울시청'
@@ -50,9 +53,11 @@ export const DirectionContents = ({ selectedPlace }: { selectedPlace: ViewNightS
           </span>
         </p>
       </div>
-
-      <div className="divider" />
-      <div className="ml-1">상세경로</div>
+        </div>
+        
+        {/* 경로 상세 목록 */}
+      <div className="p-6">
+        <div className="ml-1">상세경로</div>
       <ul className="relative mt-2 flex flex-col">
         {directionResult?.guide.map((guide, index) => (
           <li
@@ -80,6 +85,12 @@ export const DirectionContents = ({ selectedPlace }: { selectedPlace: ViewNightS
           </li>
         ))}
       </ul>
+        
+      </div>
+      
+      
+    </div>
+      
     </>
   );
 };

@@ -35,7 +35,7 @@ export const MapSidebar = ({
     <>
       <div
         ref={sidebarRef}
-        className={`fixed right-0 bottom-0 left-0 z-100 max-h-full w-full overflow-y-auto rounded-t-xl bg-base-200 shadow-lg transition-transform duration-300 ease-in-out md:top-0 md:right-auto md:left-0 md:w-[400px] md:overflow-y-visible ${
+        className={`fixed right-0 bottom-0 left-0 z-100 max-h-full w-full overflow-y-auto rounded-t-xl bg-base-100 shadow-lg transition-transform duration-300 ease-in-out md:top-0 md:right-auto md:left-0 md:w-[400px] md:overflow-y-visible ${
           isOpen
             ? 'translate-y-0 md:translate-x-0'
             : 'translate-y-full md:translate-x-[-400px] md:translate-y-0'
@@ -63,7 +63,7 @@ export const MapSidebar = ({
         </div>
 
         {/* 사이드바 내용 */}
-        <div className="h-[calc(100%-60px)] overflow-y-auto p-4">
+        <div className="h-[calc(100%-60px)] overflow-y-auto">
           {selectedPlace ? (
             isShowingPath ? (
               <DirectionContents selectedPlace={selectedPlace} />
@@ -71,7 +71,7 @@ export const MapSidebar = ({
               <DetailPlaceContents selectedPlace={selectedPlace} />
             )
           ) : (
-            <ul className="space-y-2">
+            <ul className="py-5 px-4 space-y-3">
               {places.map((place, index) => (
                 <div key={index} onClick={() => onPlaceSelect(place)}>
                   <SimplePlaceCard place={place} />
