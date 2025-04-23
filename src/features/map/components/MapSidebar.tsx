@@ -7,7 +7,7 @@ import { IoClose } from 'react-icons/io5';
 import { DirectionContents } from '@/features/map/components/DirectionContents';
 import { useMapContext } from '@/features/map/context';
 
-export const MapSidebar = () => {
+export const MapSideBar = () => {
   const sidebarRef = useRef<HTMLDivElement | null>(null);
   const { isShowingPath } = useMapDirectionContext();
   const { visiblePlacesData, isSidebarOpen, setIsSidebarOpen, selectedPlace, handlePlaceSelect } = useMapContext();

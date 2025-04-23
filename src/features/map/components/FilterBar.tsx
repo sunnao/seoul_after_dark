@@ -54,7 +54,7 @@ export const FilterBar = () => {
   // 필터 변경 핸들러
   const onFilterChange = useCallback((filters: string[]) => {
     setActiveFilters(filters);
-  }, []);
+  }, [setActiveFilters]);
 
   return (
     <div className="flex max-w-full flex-wrap items-center justify-center gap-2 rounded-lg bg-white/90 p-3 shadow-md">

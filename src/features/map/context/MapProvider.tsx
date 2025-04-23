@@ -40,12 +40,12 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
   // 지도 이동 관련 상태
-  const isInitialSearchFit = useRef<boolean>(false);
+  const isInitialSearchFitRef = useRef<boolean>(false);
   const previousZoomRef = useRef<number | null>(null);
   const previousCenterRef = useRef<naver.maps.CoordLiteral | null>(null);
 
   // 기본 중심 좌표 (서울시청)
-  const defaultCenter = useRef<naver.maps.LatLngObjectLiteral>({
+  const defaultCenterRef = useRef<naver.maps.LatLngObjectLiteral>({
     lat: 37.5666103,
     lng: 126.9783882,
   });
@@ -177,7 +177,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         !mapInstanceRef.current ||
         !isNaverReady ||
         places.length === 0 ||
-        isInitialSearchFit.current
+        isInitialSearchFitRef.current
       )
         return;
 
@@ -200,7 +200,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         { duration: 200, easing: 'easeOutCubic' },
         { top: 100, right: 50, bottom: 100, left: 50 },
       );
-      isInitialSearchFit.current = true;
+      isInitialSearchFitRef.current = true;
     },
     [isNaverReady],
   );
@@ -380,7 +380,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
           markerPair.marker.setZIndex(1000);
 
           setStartEndPoint({
-            start: currentLocation || defaultCenter.current,
+            start: currentLocation || defaultCenterRef.current,
             end: { lat: Number(place.LA), lng: Number(place.LO) },
           });
 
@@ -471,8 +471,8 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     selectedPlace,
     setSelectedPlace,
     currentLocation,
-    defaultCenter,
-    isInitialSearchFit,
+    defaultCenterRef,
+    isInitialSearchFitRef,
   };
 
   return <MapContext.Provider value={value}>{children}</MapContext.Provider>;

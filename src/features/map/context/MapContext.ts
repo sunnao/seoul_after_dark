@@ -36,8 +36,8 @@ export interface MapContextType {
   selectedPlace: ViewNightSpot | null;
   setSelectedPlace: (place: ViewNightSpot | null) => void;
   currentLocation: naver.maps.LatLngObjectLiteral | null;
-  defaultCenter: React.RefObject<naver.maps.LatLngObjectLiteral>;
-  isInitialSearchFit: React.RefObject<boolean>;
+  defaultCenterRef: React.RefObject<naver.maps.LatLngObjectLiteral>;
+  isInitialSearchFitRef: React.RefObject<boolean>;
 }
 
 export const MapContext = createContext<MapContextType | null>(null);

@@ -6,7 +6,7 @@ import { useMapContext, useMapDirectionContext } from '@/features/map/context';
 import { MdOutlineMyLocation } from 'react-icons/md';
 import { ImSpinner2 } from 'react-icons/im';
 import { renderToString } from 'react-dom/server';
-import { MapSidebar } from '@/features/map/components/MapSidebar';
+import { MapSideBar } from '@/features/map/components/MapSideBar';
 import { SUBJECTS } from '@/features/map/constants/subjects';
 import { MapControls } from '@/features/map/components/MapControls';
 import { FavoriteViewBtn } from '@/features/map/components/FavoriteViewBtn';
@@ -19,8 +19,7 @@ export const Map = () => {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const polylineRef = useRef<naver.maps.Polyline | null>(null);
 
-  const { directionResult, isShowingPath, clearPath, pathPointIndex } =
-    useMapDirectionContext();
+  const { directionResult, isShowingPath, clearPath, pathPointIndex } = useMapDirectionContext();
   const {
     mapInstanceRef,
     currentMarkerRef,
@@ -43,13 +42,11 @@ export const Map = () => {
     resetSelectedMarkerAndInfoWindow,
     openInfoWindowForPlace,
     handlePlaceSelect,
-    isSidebarOpen,
     setIsSidebarOpen,
-    selectedPlace,
     setSelectedPlace,
     currentLocation,
-    defaultCenter,
-    isInitialSearchFit,
+    defaultCenterRef,
+    isInitialSearchFitRef,
   } = useMapContext();
 
   // 검색 관련 상태
@@ -102,8 +99,10 @@ export const Map = () => {
     const hour = now.getHours();
     const minute = now.getMinutes();
     if (hour === 5 || (hour === 6 && minute < 10)) {
-      alert('오늘도 고생하셨습니다~ \n일단 보이는 변화는 길찾기 사이드바 열려있게 두기! \n전 오늘 늦게 시작했으니까 좀 더 할게요!');
-    } 
+      alert(
+        '오늘도 고생하셨습니다~ \n일단 보이는 변화는 길찾기 사이드바 열려있게 두기! \n전 오늘 늦게 시작했으니까 좀 더 할게요!',
+      );
+    }
   }, []);
 
   // 현위치 마커 업데이트
@@ -230,7 +229,7 @@ export const Map = () => {
         return null;
       }
     },
-    [isNaverReady, createMarkerIcon, handlePlaceSelect],
+    [isNaverReady, createMarkerIcon, handlePlaceSelect, setSelectedPlace],
   );
 
   // 경로 표시 상태가 변경될 때 폴리라인 업데이트
@@ -277,7 +276,7 @@ export const Map = () => {
 
     setIsAutoCompleteVisible(false);
     setIsSearchMode(true);
-    isInitialSearchFit.current = false;
+    isInitialSearchFitRef.current = false;
 
     // 검색 시 선택된 마커 초기화 (범위 자동 조정을 위해)
     if (selectedMarkerRef.current) {
@@ -394,7 +393,7 @@ export const Map = () => {
       const { naver } = window;
 
       const mapOptions = {
-        center: currentLocation ?? defaultCenter.current,
+        center: currentLocation ?? defaultCenterRef.current,
         mapDataControl: false,
         logoControlOptions: {
           position: naver.maps.Position.LEFT_BOTTOM,
@@ -457,6 +456,7 @@ export const Map = () => {
     resetSelectedMarkerAndInfoWindow,
     isShowingPath,
     clearPath,
+    setIsSidebarOpen,
   ]);
 
   // 컴포넌트 마운트 시 실행되는 코드들
@@ -468,7 +468,7 @@ export const Map = () => {
   useEffect(() => {
     const filterAll = SUBJECTS.map((filter) => filter.id);
     setActiveFilters(filterAll);
-  }, []);
+  }, [setActiveFilters]);
 
   return (
     <div className="map-container relative h-full">
@@ -508,7 +508,7 @@ export const Map = () => {
         listViewBtn={<ListViewBtn />}
         favoriteViewBtn={<FavoriteViewBtn />}
       />
-      <MapSidebar/>
+      <MapSideBar />
     </div>
   );
 };

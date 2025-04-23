@@ -25,7 +25,7 @@ export const ListViewBtn = () => {
         setIsSidebarOpen(false);
       }
     }
-  }, [handlePlaceSelect, isShowingPath, isSidebarOpen, selectedPlace]);
+  }, [handlePlaceSelect, isShowingPath, isSidebarOpen, selectedPlace, setIsSidebarOpen]);
 
   return (
     <button
