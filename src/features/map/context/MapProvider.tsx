@@ -8,10 +8,11 @@ import { renderToString } from 'react-dom/server';
 import { HiStar } from 'react-icons/hi2';
 import { SUBJECTS } from '@/features/map/constants/subjects';
 import { useScript } from '@/hooks/useScript';
+import { useCurrentLocation } from '@/features/map/hooks/useCurrentLocation';
 
 export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, authLoading } = useAuth();
-  const { isShowingPath } = useMapDirectionContext();
+  const { isShowingPath, setStartEndPoint } = useMapDirectionContext();
 
   const mapInstanceRef = useRef<naver.maps.Map | null>(null);
   const currentMarkerRef = useRef<naver.maps.Marker | null>(null);
@@ -26,6 +27,9 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const selectedInfoWindowRef = useRef<naver.maps.InfoWindow | null>(null);
   const selectedMarkerRef = useRef<MarkerWithData | null>(null);
 
+  // UI 상태
+  const [selectedPlace, setSelectedPlace] = useState<ViewNightSpot | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isFavoriteMode, setIsFavoriteMode] = useState<boolean>(false);
 
   // 검색 관련 상태
@@ -37,6 +41,14 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
 
   // 지도 이동 관련 상태
   const isInitialSearchFit = useRef<boolean>(false);
+  const previousZoomRef = useRef<number | null>(null);
+  const previousCenterRef = useRef<naver.maps.CoordLiteral | null>(null);
+
+  // 기본 중심 좌표 (서울시청)
+  const defaultCenter = useRef<naver.maps.LatLngObjectLiteral>({
+    lat: 37.5666103,
+    lng: 126.9783882,
+  });
 
   // 네이버 지도 스크립트 로드
   const [isScriptLoading, scriptError] = useScript(
@@ -45,7 +57,11 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     }`,
   );
 
+  // 네이버 객체 초기화
   const { isNaverReady } = useNaverObjInitialization(isScriptLoading, scriptError);
+
+  // 현위치 불러오기
+  const { currentLocation } = useCurrentLocation();
 
   // 전체 장소 정보 가져오기 (API 호출)
   const fetchViewNightSpotData = useCallback(async () => {
@@ -261,6 +277,145 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     setVisiblePlacesData(visiblePlaces);
   }, [isShowingPath, isNaverReady, filterPlaces, isSearchMode, isFavoriteMode, fitMapToMarkers]);
 
+  // 사이드바 열기/닫기 함수
+  const openSidebar = useCallback((place: ViewNightSpot | null = null) => {
+    setSelectedPlace(place);
+    setIsSidebarOpen(true);
+  }, []);
+
+  // 선택된 마커와 인포윈도우 초기화
+  const resetSelectedMarkerAndInfoWindow = useCallback(() => {
+    // 인포윈도우 닫기
+    if (selectedInfoWindowRef.current) {
+      selectedInfoWindowRef.current.close();
+      selectedInfoWindowRef.current = null;
+    }
+
+    // 선택된 마커 스타일 초기화
+    if (selectedMarkerRef.current) {
+      const { marker, placeData } = selectedMarkerRef.current;
+      const iconConfig = createMarkerIcon(placeData, false);
+      if (iconConfig) {
+        marker.setIcon(iconConfig);
+      }
+      marker.setZIndex(50);
+
+      selectedMarkerRef.current = null;
+    }
+    setSelectedPlace(null);
+  }, [createMarkerIcon]);
+
+  // 선택된 장소에 해당하는 인포윈도우 열기
+  const openInfoWindowForPlace = useCallback(() => {
+    if (!mapInstanceRef.current || !isNaverReady || !selectedMarkerRef.current || !window.naver)
+      return;
+
+    const { naver } = window;
+    const { placeData, marker } = selectedMarkerRef.current;
+
+    // 인포윈도우 내용 생성
+    const infoWindowContent = `
+      <div id="infoWindow" class="p-2.5 max-w-[250px] text-zinc-900 border-zinc-900 border-1 rounded shadow cursor-pointer">
+        <h4 class="font-bold text-sm">${placeData.TITLE}</h4>
+      </div>`;
+
+    const infoWindow = new naver.maps.InfoWindow({
+      content: infoWindowContent,
+      borderWidth: 0,
+      disableAnchor: true,
+      disableAutoPan: true,
+    });
+
+    // 인포윈도우 클릭 이벤트 추가
+    setTimeout(() => {
+      const infoWindowElement = document.getElementById('infoWindow');
+      if (infoWindowElement) {
+        infoWindowElement.addEventListener('click', () => handlePlaceSelect(placeData));
+      }
+    }, 100);
+
+    infoWindow.open(mapInstanceRef.current, marker);
+    selectedInfoWindowRef.current = infoWindow;
+  }, [isNaverReady]);
+
+  // 선택된 장소로 지도 중심 이동
+  const moveMapToPlace = useCallback(() => {
+    if (!mapInstanceRef.current || !isNaverReady || !selectedMarkerRef.current || !window.naver)
+      return;
+
+    const { naver } = window;
+    const { placeData } = selectedMarkerRef.current;
+    const placePosition = new naver.maps.LatLng(Number(placeData.LA), Number(placeData.LO));
+
+    // 현재 중심/줌 저장
+    if (!previousZoomRef.current && !previousCenterRef.current) {
+      previousZoomRef.current = mapInstanceRef.current.getZoom();
+      previousCenterRef.current = mapInstanceRef.current.getCenter();
+    }
+
+    mapInstanceRef.current.morph(placePosition, 15, { duration: 200, easing: 'easeOutCubic' });
+  }, [isNaverReady]);
+
+  // 장소 선택 핸들러
+  const handlePlaceSelect = useCallback(
+    (place: ViewNightSpot | null) => {
+      if (!mapInstanceRef.current || !isNaverReady) return;
+
+      // 기존 선택 초기화
+      resetSelectedMarkerAndInfoWindow();
+      setSelectedPlace(place);
+
+      if (place) {
+        // 해당 장소의 마커 찾기
+        const markerPair = markersRef.current.find((pair) => pair.placeData.ID === place.ID);
+
+        if (markerPair) {
+          selectedMarkerRef.current = markerPair;
+
+          // 마커 스타일 업데이트
+          const iconConfig = createMarkerIcon(markerPair.placeData, true);
+          if (iconConfig) {
+            markerPair.marker.setIcon(iconConfig);
+          }
+          markerPair.marker.setZIndex(1000);
+
+          setStartEndPoint({
+            start: currentLocation || defaultCenter.current,
+            end: { lat: Number(place.LA), lng: Number(place.LO) },
+          });
+
+          // 지도 중심 이동 및 사이드바 열기
+          moveMapToPlace();
+          openSidebar(place);
+
+          // 인포윈도우 열기
+          openInfoWindowForPlace();
+        }
+      } else {
+        // 장소 선택 해제 시 이전 위치로 복귀
+        if (previousCenterRef.current && previousZoomRef.current && mapInstanceRef.current) {
+          mapInstanceRef.current.morph(previousCenterRef.current, previousZoomRef.current, {
+            duration: 200,
+            easing: 'easeOutCubic',
+          });
+
+          previousCenterRef.current = null;
+          previousZoomRef.current = null;
+        }
+      }
+    },
+    [
+      isNaverReady,
+      resetSelectedMarkerAndInfoWindow,
+      createMarkerIcon,
+      moveMapToPlace,
+      openSidebar,
+      openInfoWindowForPlace,
+      currentLocation,
+      setStartEndPoint,
+    ],
+  );
+
   // 사용자 정보가 변경될 때 즐겨찾기 상태 업데이트
   useEffect(() => {
     if (authLoading) {
@@ -291,27 +446,33 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     mapInstanceRef,
     currentMarkerRef,
     totalPlaceData,
-    visiblePlacesData,
-    setVisiblePlacesData,
+		visiblePlacesData,
     isLoadingPlaces,
     isFavoriteMode,
-    setIsFavoriteMode,
+		setIsFavoriteMode,
     createMarkerIcon,
     isNaverReady,
     isScriptLoading,
     scriptError,
-		updateVisibleMarkers,
-		filterPlaces,
-		fitMapToMarkers,
-		searchKeyword,
-		setSearchKeyword,
-		isSearchMode,
-		setIsSearchMode,
-		activeFilters,
-		setActiveFilters,
-		markersRef,
-		selectedInfoWindowRef,
-		selectedMarkerRef,
+    updateVisibleMarkers,
+    searchKeyword,
+    setSearchKeyword,
+    isSearchMode,
+    setIsSearchMode,
+    activeFilters,
+    setActiveFilters,
+    markersRef,
+    selectedMarkerRef,
+    resetSelectedMarkerAndInfoWindow,
+    openInfoWindowForPlace,
+    handlePlaceSelect,
+    isSidebarOpen,
+    setIsSidebarOpen,
+    selectedPlace,
+    setSelectedPlace,
+    currentLocation,
+    defaultCenter,
+    isInitialSearchFit,
   };
 
   return <MapContext.Provider value={value}>{children}</MapContext.Provider>;

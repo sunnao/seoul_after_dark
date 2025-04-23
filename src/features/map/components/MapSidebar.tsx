@@ -1,32 +1,20 @@
 import { DetailPlaceContents } from '@/features/map/components/DetailPlaceContents';
 import SimplePlaceCard from '@/features/map/components/SimplePlaceCard';
-import { ViewNightSpot } from '@/features/map/types/mapTypes';
 import { useMapDirectionContext } from '@/features/map/context';
 import { useRef } from 'react';
 import { FaList } from 'react-icons/fa6';
 import { IoClose } from 'react-icons/io5';
 import { DirectionContents } from '@/features/map/components/DirectionContents';
+import { useMapContext } from '@/features/map/context';
 
-interface MapSidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
-  places: ViewNightSpot[];
-  selectedPlace: ViewNightSpot | null;
-  onPlaceSelect: (place: ViewNightSpot | null) => void;
-}
-
-export const MapSidebar = ({
-  isOpen,
-  onClose,
-  places,
-  selectedPlace,
-  onPlaceSelect,
-}: MapSidebarProps) => {
+export const MapSidebar = () => {
   const sidebarRef = useRef<HTMLDivElement | null>(null);
   const { isShowingPath } = useMapDirectionContext();
+  const { visiblePlacesData, isSidebarOpen, setIsSidebarOpen, selectedPlace, handlePlaceSelect } = useMapContext();
+  
   // 애니메이션 종료 후 hidden 클래스 적용
   const handleTransitionEnd = () => {
-    if (!isOpen && sidebarRef.current) {
+    if (!isSidebarOpen && sidebarRef.current) {
       sidebarRef.current.classList.add('hidden');
     }
   };
@@ -36,7 +24,7 @@ export const MapSidebar = ({
       <div
         ref={sidebarRef}
         className={`fixed right-0 bottom-0 left-0 z-100 max-h-full w-full overflow-y-auto rounded-t-xl bg-base-100 shadow-lg transition-transform duration-300 ease-in-out md:top-0 md:right-auto md:left-0 md:w-[400px] md:overflow-y-visible ${
-          isOpen
+          isSidebarOpen
             ? 'translate-y-0 md:translate-x-0'
             : 'translate-y-full md:translate-x-[-400px] md:translate-y-0'
         }`}
@@ -47,17 +35,17 @@ export const MapSidebar = ({
           {!isShowingPath ? (
             <h3 className="text-lg font-semibold">
               {selectedPlace ? (
-                <div onClick={() => onPlaceSelect(null)}>
+                <div onClick={() => handlePlaceSelect(null)}>
                   <FaList className="ml-2 h-4 w-4" />
                 </div>
               ) : (
-                `장소 목록 (${places.length}건)`
+                `장소 목록 (${visiblePlacesData.length}건)`
               )}
             </h3>
           ) : (
             <span />
           )}
-          <button onClick={onClose} className="p-2">
+          <button onClick={() => setIsSidebarOpen(false)} className="p-2">
             <IoClose className="h-5 w-5" />
           </button>
         </div>
@@ -71,9 +59,9 @@ export const MapSidebar = ({
               <DetailPlaceContents selectedPlace={selectedPlace} />
             )
           ) : (
-            <ul className="py-5 px-4 space-y-3">
-              {places.map((place, index) => (
-                <div key={index} onClick={() => onPlaceSelect(place)}>
+            <ul className="space-y-3 px-4 py-5">
+              {visiblePlacesData.map((place, index) => (
+                <div key={index} onClick={() => handlePlaceSelect(place)}>
                   <SimplePlaceCard place={place} />
                 </div>
               ))}

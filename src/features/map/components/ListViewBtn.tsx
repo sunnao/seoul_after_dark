@@ -1,13 +1,31 @@
 import { FaList } from 'react-icons/fa';
 import { MdAltRoute } from 'react-icons/md';
-import { useMapDirectionContext } from '@/features/map/context';
+import { useMapContext, useMapDirectionContext } from '@/features/map/context';
+import { useCallback } from 'react';
 
-interface ListViewBtnProps {
-  onHandleListViewBtn: () => void;
-}
-
-export const ListViewBtn = ({ onHandleListViewBtn }: ListViewBtnProps) => {
+export const ListViewBtn = () => {
 	const { isShowingPath } = useMapDirectionContext();
+	const { isSidebarOpen, setIsSidebarOpen, selectedPlace, handlePlaceSelect } = useMapContext();
+	
+	const onHandleListViewBtn = useCallback(() => {
+    if (!isSidebarOpen) {
+      setIsSidebarOpen(true);
+      if (!isShowingPath) {
+        handlePlaceSelect(null);
+      }
+    } else {
+      if (selectedPlace) {
+        if (isShowingPath) {
+          setIsSidebarOpen(false);
+        } else {
+          setIsSidebarOpen(true);
+          handlePlaceSelect(null);
+        }
+      } else {
+        setIsSidebarOpen(false);
+      }
+    }
+  }, [handlePlaceSelect, isShowingPath, isSidebarOpen, selectedPlace]);
 
   return (
     <button
