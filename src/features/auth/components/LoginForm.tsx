@@ -10,7 +10,7 @@ import { Link, useNavigate } from 'react-router-dom';
 export const LoginForm = () => {
   const [apiError, setApiError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { emailLogin } = useAuth();
   const {
     register,
     handleSubmit,
@@ -22,8 +22,15 @@ export const LoginForm = () => {
     },
   });
 
+  const kauthParams = new URLSearchParams({
+    client_id: import.meta.env.VITE_KAKAO_CLIENT_ID,
+    redirect_uri: 'http://localhost:5173/auth/kakao',
+    // redirect_uri: 'https://seoul-after-dark.vercel.app/auth/kakao',
+    response_type: 'code',
+  });
+
   const onSubmit = (data: { email: string; password: string }) => {
-    const result = login(data.email, data.password);
+    const result = emailLogin(data.email, data.password);
 
     if (result) {
       navigate('/');
@@ -78,6 +85,11 @@ export const LoginForm = () => {
           <button className="btn mt-4 btn-neutral">로그인</button>
         </fieldset>
       </form>
+
+      {/* 카카오 로그인 */}
+      <a href={`https://kauth.kakao.com/oauth/authorize?${kauthParams}`}>
+        <button className="btn mt-4 w-70 btn-neutral">카카오 로그인</button>
+      </a>
     </>
   );
 };

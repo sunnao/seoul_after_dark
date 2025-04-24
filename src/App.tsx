@@ -8,6 +8,7 @@ import { JoinPage } from '@/pages/JoinPage';
 import { MyPage } from '@/pages/MyPage';
 import { FavoritePage } from '@/pages/FavoritePage';
 import { AuthProvider } from '@/features/auth/contexts';
+import { KakaoLogin } from '@/features/auth/components/KakaoLogin';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/join" element={<JoinPage />} />
+          <Route path="/auth/kakao" element={<KakaoLogin />} />
           <Route path="/" element={<MapLayout />}>
             <Route index element={<MapPage />} />
           </Route>

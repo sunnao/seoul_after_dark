@@ -21,8 +21,13 @@ export const JoinForm = () => {
     },
   });
 
-  const onSubmit = (data: { email: string; password: string; username: string; }) => {
-    const result = join(data.email, data.password, data.username);
+  const onSubmit = (data: { email: string; password: string; username: string }) => {
+    const result = join({
+      joinType: 'email',
+      email: data.email,
+      password: data.password,
+      name: data.username,
+    });
 
     if (result.success) {
       setApiError('');
@@ -72,10 +77,10 @@ export const JoinForm = () => {
 
           {/* username */}
           <AuthInput
-            label="이름"
+            label="닉네임"
             id="username"
             type="text"
-            placeholder="이름"
+            placeholder="닉네임"
             registration={register('username', {
               setValueAs: (value) => value.trim(),
             })}
