@@ -7,6 +7,7 @@
     {
       "source": "/driving:path*",
       "destination": "https://maps.apigw.ntruss.com/map-direction/v1/driving:path*"
-    }
+    },
+    { "source": "/(.*)", "destination": "/" }
   ]
 }
