@@ -1,12 +1,3 @@
-// export interface User {
-//   joinType: 'email' | 'kakao';
-//   username: string;
-//   email?: string;
-//   password?: string;
-//   favoritePlaceIds?: string[];
-//   kakaoMemberId?: string;
-// }
-
 export interface EmailUser {
   joinType: 'email';
   username: string;
@@ -17,6 +8,7 @@ export interface EmailUser {
 
 export interface KakaoUser {
   joinType: 'kakao';
+  kakaoNickname: string;
   username: string;
   kakaoMemberId: string;
   favoritePlaceIds?: string[];
@@ -32,4 +24,12 @@ export interface KakaoTokenResponse {
   refresh_token: string;
   refresh_token_expires_in: number;
   scope: string;
+}
+
+export interface userInfoResponse {
+  id: number;
+  connected_at: string;
+  properties: {
+    nickname: string;
+  };
 }

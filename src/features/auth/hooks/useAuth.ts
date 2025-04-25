@@ -1,9 +1,16 @@
-import { KakaoTokenResponse, User } from '@/features/auth/types/userTypes';
+import {
+  EmailUser,
+  KakaoTokenResponse,
+  User,
+  userInfoResponse,
+} from '@/features/auth/types/userTypes';
 import { useAuthContext } from '@/features/auth/contexts';
 import axios from 'axios';
+import { useCallback } from 'react';
 
 export const useAuth = () => {
   const { user, setAppUser, authLoading } = useAuthContext();
+
   const findUserIndex = (users: User[], userData: User): number => {
     return users.findIndex((tempUser) => {
       if (userData.joinType === 'email' && tempUser.joinType === 'email') {
@@ -19,80 +26,54 @@ export const useAuth = () => {
     const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
     const matchedUser = users.find(
       (storedUser) =>
-        storedUser.joinType === 'email' &&
+        storedUser.joinType !== 'kakao' &&
         storedUser.email === email &&
         storedUser.password === password,
     );
 
     if (matchedUser) {
-      if (matchedUser.joinType !== undefined) {
-        matchedUser.joinType = 'email';
-        updateUser(matchedUser);
-      } else {
-        localStorage.setItem('loggedInUser', JSON.stringify(matchedUser));
+      if (matchedUser.joinType === undefined) {
+        const { username, email, password, favoritePlaceIds } = matchedUser;
+
+        const updatedUser: EmailUser = {
+          username,
+          email,
+          password,
+          favoritePlaceIds,
+          joinType: 'email',
+        };
+        updateLegacyEmailUser(updatedUser);
+        return true;
       }
 
+      localStorage.setItem('loggedInUser', JSON.stringify(matchedUser));
       setAppUser(matchedUser);
-
-      console.log(user);
       return true;
     }
     return false;
   };
 
-  const kakaoLogin = async (code: string) => {
-    
-    try {
-      const tokenResult = await getKakaoToken(code);
+  const updateLegacyEmailUser = (updatedlegacyUser: EmailUser) => {
+    const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
 
-      if (!tokenResult) {
-        throw new Error('Token not found');
-      }
-
-      const { access_token, id_token } = tokenResult;
-      const parsedToken = parseJwt(id_token);
-
-      const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
-      const kakaoMemberId = parsedToken.sub;
-
-      // id_token 의 sub(사용자의 회원번호)가 users에 있으면 로그인처리, 없으면 등록
-      let matchedUser = users.find(
-        (storedUser) =>
-          storedUser.joinType === 'kakao' && storedUser.kakaoMemberId === kakaoMemberId,
-      );
-
-      if (!matchedUser) {
-        const joinResult = join({ joinType: 'kakao', name: parsedToken.nickname, kakaoMemberId });
-
-        if (joinResult.success) {
-          const newUsers: User[] = JSON.parse(localStorage.getItem('users') || '[]');
-          matchedUser = newUsers.find(
-            (storedUser) =>
-              storedUser.joinType === 'kakao' && storedUser.kakaoMemberId === kakaoMemberId,
-          );
-        }
-      }
-
-      localStorage.setItem('accessToken', access_token);
-      sessionStorage.setItem('loggedInUser', JSON.stringify(matchedUser));
-      setAppUser(matchedUser!);
-      
-      return true;
-    } catch(e) {
-      console.error('로그인 실패:', e);
-      return false;
-    }
+    const newUers = users.map((tempUser) =>
+      tempUser.joinType !== 'kakao' && tempUser.email === updatedlegacyUser.email
+        ? updatedlegacyUser
+        : tempUser,
+    );
+    localStorage.setItem('users', JSON.stringify(newUers));
+    localStorage.setItem('loggedInUser', JSON.stringify(updatedlegacyUser));
+    setAppUser(updatedlegacyUser);
   };
 
   // 인가코드로 토큰 발급
-  const getKakaoToken = async (code: string) => {
+  const getKakaoToken = useCallback(async (code: string) => {
     try {
       const url = 'https://kauth.kakao.com/oauth/token';
       const params = new URLSearchParams({
         grant_type: 'authorization_code',
         client_id: import.meta.env.VITE_KAKAO_CLIENT_ID,
-        redirect_url: 'http://localhost:5173/auth/kakao',
-        // redirect_url: 'https://seoul-after-dark.vercel.app/auth/kakao',
+        redirect_url: import.meta.env.VITE_REDIRECT_KAKAO_LOGIN,
         code,
       });
 
@@ -106,24 +87,92 @@ export const useAuth = () => {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
 
-  const parseJwt = (token: string) => {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join(''),
-    );
-    return JSON.parse(jsonPayload);
-  };
+  // 사용자 정보 가져오기
+  const getUserInfo = useCallback(async (accessToken: string) => {
+    try {
+      const url = '	https://kapi.kakao.com/v2/user/me';
+
+      const result = await axios.get<userInfoResponse>(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+        },
+        params: { property_keys: ['kakao_account.profile'] },
+      });
+
+      console.log(result.data);
+      return result.data;
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const kakaoLogin = useCallback(
+    async (code: string) => {
+      try {
+        const tokenResult = await getKakaoToken(code);
+
+        if (!tokenResult) {
+          throw new Error('Token not found');
+        }
+
+        const { access_token } = tokenResult;
+
+        const userInfo = await getUserInfo(access_token);
+        if (!userInfo) {
+          throw new Error('userInfo not found');
+        }
+
+        const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
+        const kakaoMemberId = userInfo.id.toString();
+
+        // id_token 의 sub(사용자의 회원번호)가 users에 있으면 로그인처리, 없으면 등록
+        let matchedUser = users.find(
+          (storedUser) =>
+            storedUser.joinType === 'kakao' && storedUser.kakaoMemberId === kakaoMemberId,
+        );
+
+        if (!matchedUser) {
+          const joinResult = join({
+            joinType: 'kakao',
+            name: userInfo.properties.nickname,
+            kakaoMemberId,
+          });
+
+          if (joinResult.success) {
+            const newUsers: User[] = JSON.parse(localStorage.getItem('users') || '[]');
+            matchedUser = newUsers.find(
+              (storedUser) =>
+                storedUser.joinType === 'kakao' && storedUser.kakaoMemberId === kakaoMemberId,
+            );
+          }
+        }
+
+        localStorage.setItem('accessToken', access_token);
+        sessionStorage.setItem('loggedInUser', JSON.stringify(matchedUser));
+        setAppUser(matchedUser!);
+
+        return true;
+      } catch (e) {
+        console.error('로그인 실패:', e);
+        return false;
+      }
+    },
+    [getKakaoToken, getUserInfo, setAppUser],
+  );
 
   const logout = () => {
+    if (user?.joinType === 'kakao') {
+      localStorage.removeItem('accessToken');
+    }
     localStorage.removeItem('loggedInUser');
     setAppUser(null);
-    window.location.href = '/';
+
+    if (user?.joinType === 'email') {
+      window.location.href = '/';
+    }
   };
 
   const join = ({
@@ -156,7 +205,12 @@ export const useAuth = () => {
       return { success: true, message: '회원가입 완료' };
     } else if (joinType === 'kakao' && kakaoMemberId) {
       // 카카오 가입
-      const newUser: User = { joinType: 'kakao', username: name, kakaoMemberId };
+      const newUser: User = {
+        joinType: 'kakao',
+        username: name,
+        kakaoNickname: name,
+        kakaoMemberId,
+      };
       users.push(newUser);
       localStorage.setItem('users', JSON.stringify(users));
       return { success: true, message: '회원가입 완료' };

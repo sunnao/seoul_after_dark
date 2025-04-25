@@ -4,6 +4,12 @@ import { FaAngleDown } from 'react-icons/fa6';
 
 export const Header = () => {
   const { user, logout } = useAuth();
+  
+  const kauthLogoutParams = new URLSearchParams({
+    client_id: import.meta.env.VITE_KAKAO_CLIENT_ID,
+    logout_redirect_uri: import.meta.env.VITE_REDIRECT_KAKAO_LOOUT,
+    response_type: 'code',
+  });
 
   return (
     <header>
@@ -41,8 +47,8 @@ export const Header = () => {
             {user && (
               <li>
                 <div className="dropdown dropdown-end">
-                  <div tabIndex={0} className='flex items-center'>
-                    <span className='mr-2'>{user.username} 님</span> <FaAngleDown />
+                  <div tabIndex={0} className="flex items-center">
+                    <span className="mr-2">{user.username} 님</span> <FaAngleDown />
                   </div>
                   <ul
                     tabIndex={0}
@@ -52,7 +58,16 @@ export const Header = () => {
                       <Link to="/myPage">마이페이지</Link>
                     </li>
                     <li>
-                      <a onClick={logout}>로그아웃</a>
+                      <a
+                        href={
+                          user.joinType === 'kakao'
+                            ? `https://kauth.kakao.com/oauth/logout?${kauthLogoutParams}`
+                            : undefined
+                        }
+                        onClick={logout}
+                      >
+                        로그아웃
+                      </a>
                     </li>
                   </ul>
                 </div>

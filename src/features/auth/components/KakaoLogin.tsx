@@ -17,7 +17,7 @@ export const KakaoLogin = () => {
         navigate('/');
       }
     }
-  }, []);
+  }, [code, kakaoLogin, navigate]);
 
   useEffect(() => {
     console.log('code==', code);

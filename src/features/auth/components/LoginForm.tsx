@@ -3,6 +3,7 @@ import { AuthInput } from '@/features/auth/components/AuthInput';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { BsChatFill } from 'react-icons/bs';
 import { FiMail } from 'react-icons/fi';
 import { RiLockPasswordLine } from 'react-icons/ri';
 import { Link, useNavigate } from 'react-router-dom';
@@ -22,10 +23,9 @@ export const LoginForm = () => {
     },
   });
 
-  const kauthParams = new URLSearchParams({
+  const kauthLoginParams = new URLSearchParams({
     client_id: import.meta.env.VITE_KAKAO_CLIENT_ID,
-    redirect_uri: 'http://localhost:5173/auth/kakao',
-    // redirect_uri: 'https://seoul-after-dark.vercel.app/auth/kakao',
+    redirect_uri: import.meta.env.VITE_REDIRECT_KAKAO_LOGIN,
     response_type: 'code',
   });
 
@@ -87,8 +87,10 @@ export const LoginForm = () => {
       </form>
 
       {/* 카카오 로그인 */}
-      <a href={`https://kauth.kakao.com/oauth/authorize?${kauthParams}`}>
-        <button className="btn mt-4 w-70 btn-neutral">카카오 로그인</button>
+      <a href={`https://kauth.kakao.com/oauth/authorize?${kauthLoginParams.toString()}`}>
+        <button className="btn relative mt-4 w-70 border-[#FEE500] bg-[#FEE500] text-black/85">
+          <BsChatFill className="absolute left-5" /> <span>카카오 로그인</span>
+        </button>
       </a>
     </>
   );

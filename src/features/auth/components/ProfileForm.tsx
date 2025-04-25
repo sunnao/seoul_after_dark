@@ -31,23 +31,48 @@ export const ProfileForm = ({ isEditMode, toogleEditMode }: ProfileFormProps) =>
 
   useEffect(() => {
     if (user) {
-      reset({
+      if (user.joinType === 'email') {
+        reset({
         email: user.email,
         username: user.username,
         password: '',
         passwordCheck: '',
       });
+        
+      } else {
+        reset({
+          email: '',
+          username: user.username,
+          password: '',
+          passwordCheck: '',
+        });
+      }
+      
     }
   }, [user, reset, isEditMode]);
 
   const onSubmit = (data: { email: string; password: string; username: string }) => {
-    const result = updateUser({email: data.email, password: data.password, username:data.username});
+    const result = updateUser(
+      user!.joinType === 'email'
+        ? {
+            joinType: 'email',
+            email: data.email,
+            password: data.password,
+            username: data.username,
+          }
+        : {
+            joinType: 'kakao',
+            username: data.username,
+            kakaoMemberId: user!.kakaoMemberId,
+            kakaoNickname: user!.kakaoNickname,
+          },
+    );
     setUpdateResult(result);
-    
+
     if (result.success) {
       toogleEditMode();
     }
-    
+
     setTimeout(() => {
       setUpdateResult({
         success: false,
@@ -69,51 +94,55 @@ export const ProfileForm = ({ isEditMode, toogleEditMode }: ProfileFormProps) =>
       <form noValidate onSubmit={handleSubmit(onSubmit)} className="w-70">
         <fieldset className="fieldset">
           <AuthInput
-            label="이름"
+            label="닉네임"
             type="text"
             placeholder=""
             error={errors.username}
             disabled={!isEditMode}
             registration={register('username', {
-              required: '이름을 입력해주세요',
+              required: '닉네임을 입력해주세요',
               setValueAs: (value) => value.trim(),
             })}
           />
           <AuthInput
             label="이메일"
             type="email"
-            placeholder=""
+            placeholder={user?.joinType === 'email' ? '' : '카카오 계정 연동'}
             disabled={true}
             registration={register('email')}
           />
 
-          <AuthInput
-            label="비밀번호"
-            type="password"
-            placeholder=""
-            error={errors.password}
-            disabled={!isEditMode}
-            registration={register('password', {
-              required: '비밀번호를 입력해주세요',
-              minLength: {
-                value: 6,
-                message: '6자 이상 입력해주세요',
-              },
-            })}
-          />
+          {user?.joinType === 'email' && (
+            <AuthInput
+              label="비밀번호"
+              type="password"
+              placeholder=""
+              error={errors.password}
+              disabled={!isEditMode}
+              registration={register('password', {
+                required: '비밀번호를 입력해주세요',
+                minLength: {
+                  value: 6,
+                  message: '6자 이상 입력해주세요',
+                },
+              })}
+            />
+          )}
           {isEditMode && (
             <>
-              <AuthInput
-                label="비밀번호 확인"
-                type="password"
-                placeholder=""
-                error={errors.passwordCheck}
-                disabled={!isEditMode}
-                registration={register('passwordCheck', {
-                  validate: (value) =>
-                    value === watch('password') || '비밀번호가 일치하지 않습니다',
-                })}
-              />
+              {user?.joinType === 'email' && (
+                <AuthInput
+                  label="비밀번호 확인"
+                  type="password"
+                  placeholder=""
+                  error={errors.passwordCheck}
+                  disabled={!isEditMode}
+                  registration={register('passwordCheck', {
+                    validate: (value) =>
+                      value === watch('password') || '비밀번호가 일치하지 않습니다',
+                  })}
+                />
+              )}
               <button type="submit" className="btn mt-3 btn-neutral">
                 저장
               </button>
