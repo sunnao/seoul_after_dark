@@ -1,9 +1,12 @@
+import { ViewNightSpot } from "@/features/map/types/mapTypes";
+
 export interface EmailUser {
   joinType: 'email';
   username: string;
   email: string;
   password: string;
   favoritePlaceIds?: string[];
+  customPlaces?: ViewNightSpot[];
 }
 
 export interface KakaoUser {
@@ -12,6 +15,7 @@ export interface KakaoUser {
   username: string;
   kakaoMemberId: string;
   favoritePlaceIds?: string[];
+  customPlaces?: ViewNightSpot[];
 }
 
 export type User = EmailUser | KakaoUser;

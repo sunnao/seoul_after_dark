@@ -13,18 +13,18 @@ export interface ViewNightSpot {
   ADDR: string;
   LA: string;
   LO: string;
-  TEL_NO: string;
-  URL: string;
+  TEL_NO?: string;
+  URL?: string;
   OPERATING_TIME: string;
   FREE_YN: string;
-  ENTR_FEE: string;
+  ENTR_FEE?: string;
   CONTENTS: string;
-  SUBWAY: string;
-  BUS: string;
-  PARKING_INFO: string;
+  SUBWAY?: string;
+  BUS?: string;
+  PARKING_INFO?: string;
   REG_DATE: string;
   MOD_DATE: string;
-  IS_FAVORITE: boolean;
+  IS_FAVORITE?: boolean;
 }
 
 export interface ApiResponse {

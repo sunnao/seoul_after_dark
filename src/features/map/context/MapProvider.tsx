@@ -54,7 +54,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const [isScriptLoading, scriptError] = useScript(
     `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${
       import.meta.env.VITE_NAVER_MAP_API_KEY
-    }`,
+    }&submodules=geocoder`,
   );
 
   // 네이버 객체 초기화
@@ -416,24 +416,21 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     ],
   );
 
-  // 사용자 정보가 변경될 때 즐겨찾기 상태 업데이트
+  // 사용자 장소 데이터 추가
   useEffect(() => {
-    if (authLoading) {
-      return;
-    }
+    if (!user || !totalPlaceData.length) return;
 
-    if (!user) {
-      setIsFavoriteMode(false);
-      return;
-    }
+    const customPlaces = user.customPlaces || [];
 
-    setTotalPlaceData((prevData: ViewNightSpot[]) =>
-      prevData.map((place) => ({
-        ...place,
-        IS_FAVORITE: (user.favoritePlaceIds || []).includes(place.ID),
-      })),
-    );
-  }, [user, authLoading]);
+    // 중복 방지를 위해 ID 체크
+    const existingIds = new Set(totalPlaceData.map((place) => place.ID));
+
+    const newCustomPlaces = customPlaces.filter((place) => !existingIds.has(place.ID));
+
+    if (newCustomPlaces.length > 0) {
+      setTotalPlaceData((prev) => [...prev, ...customPlaces]);
+    }
+  }, [user, totalPlaceData]);
 
   useEffect(() => {
     // 인증 로딩이 완료된 경우에만 데이터 로드

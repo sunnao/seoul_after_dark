@@ -15,7 +15,11 @@ import { SearchFilterContainer } from '@/features/map/components/SearchFilterCon
 import { SearchBar } from '@/features/map/components/SearchBar';
 import { FilterBar } from '@/features/map/components/FilterBar';
 
+import { useAuth } from '@/features/auth/hooks/useAuth';
+
 export const Map = () => {
+  const { user, updateUser } = useAuth();
+
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const polylineRef = useRef<naver.maps.Polyline | null>(null);
 
@@ -94,15 +98,34 @@ export const Map = () => {
     }
   }, [isNaverReady, directionResult]);
 
-  useEffect(() => {
-    const now = new Date();
-    const hour = now.getHours();
-    const minute = now.getMinutes();
-    if (hour === 5 || (hour === 6 && minute < 10)) {
-      alert(
-        '오늘도 고생하셨습니다~ \n일단 보이는 변화는 길찾기 사이드바 열려있게 두기! \n전 오늘 늦게 시작했으니까 좀 더 할게요!',
-      );
+  const addPlace = () => {
+    if (!user) {
+      return;
     }
+
+    const newPlace: ViewNightSpot = {
+      ID: '37.57333045244355_126.9856914675238',
+      SUBJECT_CD: '기타',
+      TITLE: '내가추가한장소',
+      ADDR: '주소주소주소(서울 종로구 관훈동 197-17)',
+      LA: '37.57333045244355',
+      LO: '126.9856914675238',
+      OPERATING_TIME: '상시',
+      FREE_YN: '무료',
+      CONTENTS:
+        '테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.',
+      REG_DATE: '2025-12-11 15:16:51',
+      MOD_DATE: '2025-12-11 15:16:51',
+      IS_FAVORITE: false,
+    };
+
+    const newUserInfo = { ...user };
+    newUserInfo.customPlaces = [...(newUserInfo.customPlaces || []), newPlace];
+    updateUser(newUserInfo);
+  };
+
+  useEffect(() => {
+    // addPlace();
   }, []);
 
   // 현위치 마커 업데이트
@@ -421,6 +444,86 @@ export const Map = () => {
     }
   }, [isNaverReady, getCurrentLocation, currentLocation, initCustomController]);
 
+  // 좌표를 주소로 변환하는 함수
+  const getAddressFromLatLng = useCallback(
+    (
+      coords: naver.maps.CoordLiteral,
+      callback: (address: naver.maps.Service.ReverseGeocodeAddress | null) => void,
+    ): void => {
+      naver.maps.Service.reverseGeocode(
+        {
+          coords: coords,
+          orders: [naver.maps.Service.OrderType.ADDR, naver.maps.Service.OrderType.ROAD_ADDR].join(
+            ',',
+          ),
+        },
+        (
+          status: naver.maps.Service.Status,
+          response: naver.maps.Service.ReverseGeocodeResponse,
+        ) => {
+          if (status === naver.maps.Service.Status.OK) {
+            const result = response.v2;
+            const address = result.address;
+
+            callback({
+              jibunAddress: address.jibunAddress || '',
+              roadAddress: address.roadAddress || '',
+            });
+            
+          } else {
+            callback(null);
+          }
+        },
+      );
+    },
+    [],
+  );
+
+  const handleMapClick = useCallback(
+    (e: naver.maps.PointerEvent) => {
+      
+      resetSelectedMarkerAndInfoWindow();
+      setIsSidebarOpen(false);
+      if (isShowingPath) {
+        clearPath();
+      }
+
+      const latlng = e.coord;
+      console.log('latlng', latlng);
+      console.log('naver.maps.Service', naver.maps.Service);
+
+      getAddressFromLatLng(latlng, (addr) => {
+        if (!mapInstanceRef.current) {
+          return;
+        }
+        
+         if (!addr) {
+           console.error('주소를 찾을 수 없습니다.');
+           return;
+         }
+         console.log('도로명 주소:', addr.roadAddress);
+         
+         const content = `
+          <div class="p-2.5 max-w-[350px] break-keep text-sm text-zinc-900 shadow-lg">
+            <p>${addr.roadAddress || addr.jibunAddress}</p>
+            <div class="text-end text-xs underline mt-1 cursor-pointer">+ 내 장소 추가</div>
+          </div>
+        `;
+        
+        const infoWindow = new naver.maps.InfoWindow({
+          content: content,
+          borderWidth: 0,
+          disableAnchor: false,
+          disableAutoPan: true,
+          backgroundColor: '#ffffffe6',
+        });
+
+         infoWindow.setContent(content);
+         infoWindow.open(mapInstanceRef.current, latlng);
+      });
+    },
+    [clearPath, getAddressFromLatLng, isShowingPath, resetSelectedMarkerAndInfoWindow, setIsSidebarOpen])
+
   // 이벤트 리스너 설정
   useEffect(() => {
     if (!mapInstanceRef.current || !isNaverReady || !window.naver) return;
@@ -429,15 +532,10 @@ export const Map = () => {
     mapInstanceRef.current.clearListeners('idle');
     mapInstanceRef.current.clearListeners('click');
     mapInstanceRef.current.clearListeners('drag');
+
     // 새 리스너 추가
     const idleListener = mapInstanceRef.current.addListener('idle', handleMapIdle);
-    const clickListener = mapInstanceRef.current.addListener('click', () => {
-      resetSelectedMarkerAndInfoWindow();
-      setIsSidebarOpen(false);
-      if (isShowingPath) {
-        clearPath();
-      }
-    });
+    const clickListener = mapInstanceRef.current.addListener('click', (e) => handleMapClick(e));
 
     const dragListener = mapInstanceRef.current.addListener('drag', () => {
       setIsSidebarOpen(false);
@@ -457,6 +555,7 @@ export const Map = () => {
     isShowingPath,
     clearPath,
     setIsSidebarOpen,
+    handleMapClick,
   ]);
 
   // 컴포넌트 마운트 시 실행되는 코드들
