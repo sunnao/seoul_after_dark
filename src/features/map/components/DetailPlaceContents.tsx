@@ -10,6 +10,7 @@ import { FaRegClock } from 'react-icons/fa';
 import { HiOutlinePhone } from 'react-icons/hi';
 import { PiLinkSimpleBold } from 'react-icons/pi';
 import { MdOutlineDirections } from 'react-icons/md';
+import { GrEdit } from 'react-icons/gr';
 
 // 네이버 API 응답 타입 정의
 interface NaverDirectionResponse {
@@ -81,6 +82,11 @@ export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNigh
                 {selectedPlace.ADDR}
               </p>
             </div>
+            {selectedPlace.ID.includes('my_') && (
+              <button onClick={() => alert('준비중입니다')}>
+                <GrEdit className="mt-1 mr-2 h-8 w-6" />
+              </button>
+            )}
             <button onClick={() => toogleFavorite(!selectedPlace.IS_FAVORITE)}>
               {selectedPlace.IS_FAVORITE ? (
                 <HiStar className="mt-1 h-8 w-8 text-amber-400" />
@@ -96,48 +102,52 @@ export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNigh
         </div>
 
         {/* Middle */}
-        <div className="border-b-1 border-base-content/10 p-6">
-          <div className="space-y-2">
-            {selectedPlace.OPERATING_TIME && (
-              <div className="flex gap-2">
-                <FaRegClock className="w-5 flex-shrink-0 text-[27px]" />
-                <span>
-                  <span className="text-gray-500 dark:text-gray-400">
-                    {selectedPlace.OPERATING_TIME}
+        {(selectedPlace.OPERATING_TIME || selectedPlace.TEL_NO || selectedPlace.URL) && (
+          <div className="p-6">
+            <div className="space-y-2">
+              {selectedPlace.OPERATING_TIME && (
+                <div className="flex gap-2">
+                  <FaRegClock className="w-5 flex-shrink-0 text-[27px]" />
+                  <span>
+                    <span className="text-gray-500 dark:text-gray-400">
+                      {selectedPlace.OPERATING_TIME}
+                    </span>
                   </span>
-                </span>
-              </div>
-            )}
+                </div>
+              )}
 
-            {selectedPlace.TEL_NO && (
-              <div className="flex gap-2">
-                <HiOutlinePhone className="w-5 flex-shrink-0 text-[27px]" />
-                <span className="text-gray-500 dark:text-gray-400">{selectedPlace.TEL_NO}</span>
-              </div>
-            )}
+              {selectedPlace.TEL_NO && (
+                <div className="flex gap-2">
+                  <HiOutlinePhone className="w-5 flex-shrink-0 text-[27px]" />
+                  <span className="text-gray-500 dark:text-gray-400">{selectedPlace.TEL_NO}</span>
+                </div>
+              )}
 
-            {selectedPlace.URL && (
-              <div className="flex gap-2">
-                <PiLinkSimpleBold className="w-5 flex-shrink-0 text-[27px]" />
-                <a
-                  href={selectedPlace.URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="break-all text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  {selectedPlace.URL}
-                </a>
-              </div>
-            )}
+              {selectedPlace.URL && (
+                <div className="flex gap-2">
+                  <PiLinkSimpleBold className="w-5 flex-shrink-0 text-[27px]" />
+                  <a
+                    href={selectedPlace.URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="break-all text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    {selectedPlace.URL}
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Bottom */}
-        <div className="p-6">
-          <div className="[&_*]:!text-base [&_*]:text-gray-500 dark:[&_*]:!text-gray-400">
-            {parse(selectedPlace.CONTENTS)}
+        {selectedPlace.CONTENTS && (
+          <div className="border-t-1 border-base-content/10 p-6">
+            <div className="[&_*]:!text-base [&_*]:text-gray-500 dark:[&_*]:!text-gray-400">
+              {parse(selectedPlace.CONTENTS)}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </>
   );

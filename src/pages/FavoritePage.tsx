@@ -21,8 +21,13 @@ export const FavoritePage = () => {
 
       if (result.data.viewNightSpot.RESULT.CODE === 'INFO-000') {
         const places = result.data.viewNightSpot.row;
+        const placesAddIdAndFavorite: ViewNightSpot[] = places.map((place) => ({
+          ...place,
+          ID: `${place.LA}_${place.LO}`,
+          IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`${place.LA}_${place.LO}`),
+        }));
         
-        setTotalFavoritePlaces(places);
+        setTotalFavoritePlaces(placesAddIdAndFavorite);
       }
     } catch (e) {
       console.error(e);

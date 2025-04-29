@@ -3,11 +3,10 @@ export interface ViewNightSpotResult {
     CODE: string;
     MESSAGE: string;
   };
-  row: ViewNightSpot[];
+  row: ApiViewNightSpot[];
 }
 
-export interface ViewNightSpot {
-  ID: string,
+export interface ApiViewNightSpot {
   SUBJECT_CD: string;
   TITLE: string;
   ADDR: string;
@@ -15,16 +14,20 @@ export interface ViewNightSpot {
   LO: string;
   TEL_NO?: string;
   URL?: string;
-  OPERATING_TIME: string;
-  FREE_YN: string;
+  OPERATING_TIME?: string;
+  FREE_YN?: string;
   ENTR_FEE?: string;
-  CONTENTS: string;
+  CONTENTS?: string;
   SUBWAY?: string;
   BUS?: string;
   PARKING_INFO?: string;
   REG_DATE: string;
   MOD_DATE: string;
-  IS_FAVORITE?: boolean;
+}
+
+export interface ViewNightSpot extends ApiViewNightSpot {
+  ID: string;
+  IS_FAVORITE: boolean;
 }
 
 export interface ApiResponse {

@@ -16,12 +16,17 @@ import { SearchBar } from '@/features/map/components/SearchBar';
 import { FilterBar } from '@/features/map/components/FilterBar';
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { AddPlaceModal } from '@/features/map/components/AddPlaceModal';
 
 export const Map = () => {
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
 
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const polylineRef = useRef<naver.maps.Polyline | null>(null);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalLatlng, setModalLatlng] = useState<naver.maps.Coord | null>(null);
+  const [modalAddress, setModalAddress] = useState<string>('');
 
   const { directionResult, isShowingPath, clearPath, pathPointIndex } = useMapDirectionContext();
   const {
@@ -98,35 +103,35 @@ export const Map = () => {
     }
   }, [isNaverReady, directionResult]);
 
-  const addPlace = () => {
-    if (!user) {
-      return;
-    }
+  // const addPlace = () => {
+  //   if (!user) {
+  //     return;
+  //   }
 
-    const newPlace: ViewNightSpot = {
-      ID: '37.57333045244355_126.9856914675238',
-      SUBJECT_CD: '기타',
-      TITLE: '내가추가한장소',
-      ADDR: '주소주소주소(서울 종로구 관훈동 197-17)',
-      LA: '37.57333045244355',
-      LO: '126.9856914675238',
-      OPERATING_TIME: '상시',
-      FREE_YN: '무료',
-      CONTENTS:
-        '테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.',
-      REG_DATE: '2025-12-11 15:16:51',
-      MOD_DATE: '2025-12-11 15:16:51',
-      IS_FAVORITE: false,
-    };
+  //   const newPlace: ViewNightSpot = {
+  //     ID: '37.57333045244355_126.9856914675238',
+  //     SUBJECT_CD: '기타',
+  //     TITLE: '내가추가한장소',
+  //     ADDR: '주소주소주소(서울 종로구 관훈동 197-17)',
+  //     LA: '37.57333045244355',
+  //     LO: '126.9856914675238',
+  //     OPERATING_TIME: '상시',
+  //     FREE_YN: '무료',
+  //     CONTENTS:
+  //       '테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.',
+  //     REG_DATE: '2025-12-11 15:16:51',
+  //     MOD_DATE: '2025-12-11 15:16:51',
+  //     IS_FAVORITE: false,
+  //   };
 
-    const newUserInfo = { ...user };
-    newUserInfo.customPlaces = [...(newUserInfo.customPlaces || []), newPlace];
-    updateUser(newUserInfo);
-  };
+  //   const newUserInfo = { ...user };
+  //   newUserInfo.customPlaces = [...(newUserInfo.customPlaces || []), newPlace];
+  //   updateUser(newUserInfo);
+  // };
 
-  useEffect(() => {
-    // addPlace();
-  }, []);
+  // useEffect(() => {
+  //   // addPlace();
+  // }, []);
 
   // 현위치 마커 업데이트
   const updateCurrentLocationMarker = useCallback(() => {
@@ -357,26 +362,6 @@ export const Map = () => {
     currentLocationButton.setMap(mapInstanceRef.current);
   }, [isNaverReady, getCurrentLocation]);
 
-  // const onHandleListViewBtn = useCallback(() => {
-  //   if (!isSidebarOpen) {
-  //     setIsSidebarOpen(true);
-  //     if (!isShowingPath) {
-  //       handlePlaceSelect(null);
-  //     }
-  //   } else {
-  //     if (selectedPlace) {
-  //       if (isShowingPath) {
-  //         setIsSidebarOpen(false);
-  //       } else {
-  //         setIsSidebarOpen(true);
-  //         handlePlaceSelect(null);
-  //       }
-  //     } else {
-  //       setIsSidebarOpen(false);
-  //     }
-  //   }
-  // }, [handlePlaceSelect, isShowingPath, isSidebarOpen, selectedPlace]);
-
   // 총 장소 데이터가 변경될 때 마커 생성
   useEffect(() => {
     if (!isNaverReady || totalPlaceData.length === 0) return;
@@ -436,11 +421,11 @@ export const Map = () => {
 
       mapInstanceRef.current = new naver.maps.Map(mapDivRef.current, mapOptions);
 
-      // 지도 초기화 후 커스텀 컨트롤러 추가 및 현위치 가져오기
-      mapInstanceRef.current.addListenerOnce('init', () => {
-        initCustomController();
-        getCurrentLocation();
-      });
+        // 지도 초기화 후 커스텀 컨트롤러 추가 및 현위치 가져오기
+        mapInstanceRef.current.addListenerOnce('init', () => {
+          initCustomController();
+          getCurrentLocation();
+        });
     }
   }, [isNaverReady, getCurrentLocation, currentLocation, initCustomController]);
 
@@ -469,7 +454,6 @@ export const Map = () => {
               jibunAddress: address.jibunAddress || '',
               roadAddress: address.roadAddress || '',
             });
-            
           } else {
             callback(null);
           }
@@ -481,48 +465,84 @@ export const Map = () => {
 
   const handleMapClick = useCallback(
     (e: naver.maps.PointerEvent) => {
-      
+      if (!selectedMarkerRef.current) {
+        const latlng = e.coord;
+        console.log('latlng', latlng);
+        console.log('naver.maps.Service', naver.maps.Service);
+
+        getAddressFromLatLng(latlng, (addr) => {
+          if (!mapInstanceRef.current) {
+            return;
+          }
+
+          if (!addr) {
+            console.error('주소를 찾을 수 없습니다.');
+            return;
+          }
+
+          const content = `
+          <div class="p-2.5 pt-1 max-w-[350px] break-keep text-sm text-zinc-900 shadow-lg">
+            <div class="text-end"> 
+            <button id="closeBtn" class="inline w-6 h-6 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="inline w-5 h-5" fill="none" stroke="currentColor" stroke-width="48">
+          <path d="M368 368L144 144M368 144L144 368" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+      </div>
+            <p>${addr.roadAddress || addr.jibunAddress}</p>
+            <div class="text-end"><button id="addPlaceBtn" class="text-xs underline cursor-pointer">내 장소 추가</button></div>
+          </div>
+        `;
+
+          const infoWindow = new naver.maps.InfoWindow({
+            content: content,
+            borderWidth: 0,
+            disableAnchor: false,
+            disableAutoPan: true,
+            backgroundColor: '#ffffffe6',
+          });
+
+          setTimeout(() => {
+            document.getElementById('closeBtn')?.addEventListener('click', () => {
+              infoWindow.close();
+            });
+            
+            
+            const btn = document.getElementById('addPlaceBtn');
+            if (btn) {
+              btn.onclick = () => {
+                if (!user) {
+                  alert('로그인이 필요한 기능입니다.')
+                  return;
+                }
+
+                setModalLatlng(latlng);
+                setModalAddress(addr.roadAddress || addr.jibunAddress);
+                setModalOpen(true);
+              };
+            }
+          }, 100);
+
+          //  infoWindow.setContent(content);
+          infoWindow.open(mapInstanceRef.current, latlng);
+        });
+      }
+
       resetSelectedMarkerAndInfoWindow();
       setIsSidebarOpen(false);
       if (isShowingPath) {
         clearPath();
       }
-
-      const latlng = e.coord;
-      console.log('latlng', latlng);
-      console.log('naver.maps.Service', naver.maps.Service);
-
-      getAddressFromLatLng(latlng, (addr) => {
-        if (!mapInstanceRef.current) {
-          return;
-        }
-        
-         if (!addr) {
-           console.error('주소를 찾을 수 없습니다.');
-           return;
-         }
-         console.log('도로명 주소:', addr.roadAddress);
-         
-         const content = `
-          <div class="p-2.5 max-w-[350px] break-keep text-sm text-zinc-900 shadow-lg">
-            <p>${addr.roadAddress || addr.jibunAddress}</p>
-            <div class="text-end text-xs underline mt-1 cursor-pointer">+ 내 장소 추가</div>
-          </div>
-        `;
-        
-        const infoWindow = new naver.maps.InfoWindow({
-          content: content,
-          borderWidth: 0,
-          disableAnchor: false,
-          disableAutoPan: true,
-          backgroundColor: '#ffffffe6',
-        });
-
-         infoWindow.setContent(content);
-         infoWindow.open(mapInstanceRef.current, latlng);
-      });
     },
-    [clearPath, getAddressFromLatLng, isShowingPath, resetSelectedMarkerAndInfoWindow, setIsSidebarOpen])
+    [
+      clearPath,
+      getAddressFromLatLng,
+      isShowingPath,
+      resetSelectedMarkerAndInfoWindow,
+      setIsSidebarOpen,
+      handlePlaceSelect,
+    ],
+  );
 
   // 이벤트 리스너 설정
   useEffect(() => {
@@ -608,6 +628,12 @@ export const Map = () => {
         favoriteViewBtn={<FavoriteViewBtn />}
       />
       <MapSideBar />
+      <AddPlaceModal
+        latlng={modalLatlng}
+        address={modalAddress}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+      />
     </div>
   );
 };
