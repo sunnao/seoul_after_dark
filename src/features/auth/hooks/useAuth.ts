@@ -190,7 +190,7 @@ export const useAuth = () => {
   }) => {
     const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
 
-    if (joinType === email && password) {
+    if (joinType === 'email' && password && email) {
       // 이메일 가입
       if (
         users.find((storedUser) => storedUser.joinType === 'email' && storedUser.email === email)
