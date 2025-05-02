@@ -11,6 +11,7 @@ import { HiOutlinePhone } from 'react-icons/hi';
 import { PiLinkSimpleBold } from 'react-icons/pi';
 import { MdOutlineDirections } from 'react-icons/md';
 import { GrEdit } from 'react-icons/gr';
+import { RiDeleteBinLine } from 'react-icons/ri';
 
 // 네이버 API 응답 타입 정의
 interface NaverDirectionResponse {
@@ -22,9 +23,16 @@ interface NaverDirectionResponse {
 }
 
 export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNightSpot }) => {
-  const { addFavorite, deleteFavorite } = useAuth();
+  const { user, updateUser, addFavorite, deleteFavorite } = useAuth();
   const { clearPath, showPath, startEndPoint } = useMapDirectionContext();
-  const { setModalOpen, setModalMode } = useMapContext();
+  const {
+    setModalOpen,
+    setModalMode,
+    setIsSidebarOpen,
+    selectedInfoWindowRef,
+    selectedMarkerRef,
+    setSelectedPlace,
+  } = useMapContext();
 
   const toogleFavorite = (isAddFavoriteMode: boolean) => {
     if (isAddFavoriteMode) {
@@ -60,17 +68,72 @@ export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNigh
       clearPath();
     }
   }, [startEndPoint]);
+  
+  const deletePlace = () => {
+    if (!user) {
+      return;
+    }
+    
+    const checkDelete = confirm('정말 삭제하시겠습니까?');
+    if (!checkDelete) {
+      return;
+    } 
+    
+    setIsSidebarOpen(false);
+    
+    const newUserInfo = { ...user };
+    newUserInfo.customPlaces = (newUserInfo.customPlaces || []).filter(
+      (place) => place.ID !== selectedPlace.ID,
+    );
+
+    if (selectedInfoWindowRef.current) {
+      selectedInfoWindowRef.current.close();
+      selectedInfoWindowRef.current = null;
+    }
+
+    if (selectedMarkerRef.current) {
+      const { marker } = selectedMarkerRef.current;
+      marker.setMap(null);
+      selectedMarkerRef.current = null;
+    }
+    
+    setSelectedPlace(null);
+    setTimeout(() => updateUser(newUserInfo), 500);
+  };
 
   return (
     <>
       <div className="bg-base-100 text-base-content">
         {/* Top */}
         <div className="border-b-1 border-base-content/10 bg-base-300/80 p-6">
+          <div className="flex justify-between">
+            <span className="text-sm text-gray-400 dark:text-gray-500">
+              업데이트: {selectedPlace.MOD_DATE.slice(0, 16)}
+            </span>
+            {selectedPlace.ID.startsWith('my_') && (
+              <div className="flex">
+                <button
+                  onClick={() => {
+                    setModalMode('update');
+                    setModalOpen(true);
+                  }}
+                  className="flex items-center px-2 text-sm text-gray-400 hover:cursor-pointer hover:underline dark:text-gray-500"
+                >
+                  <GrEdit className="h-4 w-4" />
+                  <span>수정</span>
+                </button>
+                <button
+                  onClick={deletePlace}
+                  className="flex items-center pl-2 text-sm text-gray-400 hover:cursor-pointer hover:underline dark:text-gray-500"
+                >
+                  <RiDeleteBinLine className="h-4 w-4" />
+                  <span>삭제</span>
+                </button>
+              </div>
+            )}
+          </div>
           <div className="flex items-start justify-between">
             <div className="w-full pr-4">
-              <p className="text-sm text-gray-400 dark:text-gray-500">
-                업데이트: {selectedPlace.MOD_DATE.slice(0, 16)}
-              </p>
               <div className="mt-3 flex items-center gap-2">
                 <span className="badge text-xs font-medium badge-neutral">
                   {selectedPlace.SUBJECT_CD}
@@ -83,17 +146,11 @@ export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNigh
                 {selectedPlace.ADDR}
               </p>
             </div>
-            {selectedPlace.ID.startsWith('my_') && (
-              <button
-                onClick={() => {
-                  setModalMode('update');
-                  setModalOpen(true);
-                }}
-              >
-                <GrEdit className="mt-1 mr-2 h-8 w-6" />
-              </button>
-            )}
-            <button onClick={() => toogleFavorite(!selectedPlace.IS_FAVORITE)}>
+
+            <button
+              onClick={() => toogleFavorite(!selectedPlace.IS_FAVORITE)}
+              className="hover:cursor-pointer"
+            >
               {selectedPlace.IS_FAVORITE ? (
                 <HiStar className="mt-1 h-8 w-8 text-amber-400" />
               ) : (
