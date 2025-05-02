@@ -16,17 +16,13 @@ import { SearchBar } from '@/features/map/components/SearchBar';
 import { FilterBar } from '@/features/map/components/FilterBar';
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { AddPlaceModal } from '@/features/map/components/AddPlaceModal';
+import { EditPlaceModal } from '@/features/map/components/EditPlaceModal';
 
 export const Map = () => {
   const { user } = useAuth();
 
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const polylineRef = useRef<naver.maps.Polyline | null>(null);
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalLatlng, setModalLatlng] = useState<naver.maps.Coord | null>(null);
-  const [modalAddress, setModalAddress] = useState<string>('');
 
   const { directionResult, isShowingPath, clearPath, pathPointIndex } = useMapDirectionContext();
   const {
@@ -47,6 +43,7 @@ export const Map = () => {
     activeFilters,
     setActiveFilters,
     markersRef,
+    selectedPlace,
     selectedMarkerRef,
     resetSelectedMarkerAndInfoWindow,
     openInfoWindowForPlace,
@@ -56,6 +53,12 @@ export const Map = () => {
     currentLocation,
     defaultCenterRef,
     isInitialSearchFitRef,
+    modalOpen,
+    setModalOpen,
+    modalMode,
+    setModalMode,
+    createPlaceInfo,
+    setCreatePlaceInfo,
   } = useMapContext();
 
   // 검색 관련 상태
@@ -102,36 +105,6 @@ export const Map = () => {
       });
     }
   }, [isNaverReady, directionResult]);
-
-  // const addPlace = () => {
-  //   if (!user) {
-  //     return;
-  //   }
-
-  //   const newPlace: ViewNightSpot = {
-  //     ID: '37.57333045244355_126.9856914675238',
-  //     SUBJECT_CD: '기타',
-  //     TITLE: '내가추가한장소',
-  //     ADDR: '주소주소주소(서울 종로구 관훈동 197-17)',
-  //     LA: '37.57333045244355',
-  //     LO: '126.9856914675238',
-  //     OPERATING_TIME: '상시',
-  //     FREE_YN: '무료',
-  //     CONTENTS:
-  //       '테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.테스트용 내용입니다.',
-  //     REG_DATE: '2025-12-11 15:16:51',
-  //     MOD_DATE: '2025-12-11 15:16:51',
-  //     IS_FAVORITE: false,
-  //   };
-
-  //   const newUserInfo = { ...user };
-  //   newUserInfo.customPlaces = [...(newUserInfo.customPlaces || []), newPlace];
-  //   updateUser(newUserInfo);
-  // };
-
-  // useEffect(() => {
-  //   // addPlace();
-  // }, []);
 
   // 현위치 마커 업데이트
   const updateCurrentLocationMarker = useCallback(() => {
@@ -273,7 +246,6 @@ export const Map = () => {
 
   // 지도 이동 완료 후 핸들러
   const handleMapIdle = useCallback(() => {
-    console.log('handleMapIdle');
 
     if (selectedMarkerRef.current) {
       // 선택된 마커가 있으면 인포윈도우 열기
@@ -421,11 +393,11 @@ export const Map = () => {
 
       mapInstanceRef.current = new naver.maps.Map(mapDivRef.current, mapOptions);
 
-        // 지도 초기화 후 커스텀 컨트롤러 추가 및 현위치 가져오기
-        mapInstanceRef.current.addListenerOnce('init', () => {
-          initCustomController();
-          getCurrentLocation();
-        });
+      // 지도 초기화 후 커스텀 컨트롤러 추가 및 현위치 가져오기
+      mapInstanceRef.current.addListenerOnce('init', () => {
+        initCustomController();
+        getCurrentLocation();
+      });
     }
   }, [isNaverReady, getCurrentLocation, currentLocation, initCustomController]);
 
@@ -467,8 +439,6 @@ export const Map = () => {
     (e: naver.maps.PointerEvent) => {
       if (!selectedMarkerRef.current) {
         const latlng = e.coord;
-        console.log('latlng', latlng);
-        console.log('naver.maps.Service', naver.maps.Service);
 
         getAddressFromLatLng(latlng, (addr) => {
           if (!mapInstanceRef.current) {
@@ -506,24 +476,24 @@ export const Map = () => {
             document.getElementById('closeBtn')?.addEventListener('click', () => {
               infoWindow.close();
             });
-            
-            
+
             const btn = document.getElementById('addPlaceBtn');
             if (btn) {
               btn.onclick = () => {
                 if (!user) {
-                  alert('로그인이 필요한 기능입니다.')
+                  alert('로그인이 필요한 기능입니다.');
                   return;
                 }
-
-                setModalLatlng(latlng);
-                setModalAddress(addr.roadAddress || addr.jibunAddress);
+                setModalMode('create')
                 setModalOpen(true);
+                setCreatePlaceInfo({
+                  latlng: latlng,
+                  address: addr.roadAddress || addr.jibunAddress,
+                });
               };
             }
           }, 100);
 
-          //  infoWindow.setContent(content);
           infoWindow.open(mapInstanceRef.current, latlng);
         });
       }
@@ -628,12 +598,15 @@ export const Map = () => {
         favoriteViewBtn={<FavoriteViewBtn />}
       />
       <MapSideBar />
-      <AddPlaceModal
-        latlng={modalLatlng}
-        address={modalAddress}
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-      />
+      {modalOpen && (createPlaceInfo || selectedPlace) && (
+        <EditPlaceModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          mode={modalMode}
+          createPlaceInfo={createPlaceInfo || undefined}
+          updatePlaceInfo={selectedPlace || undefined}
+        />
+      )}
     </div>
   );
 };

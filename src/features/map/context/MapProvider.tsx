@@ -9,6 +9,7 @@ import { HiStar } from 'react-icons/hi2';
 import { SUBJECTS } from '@/features/map/constants/subjects';
 import { useScript } from '@/hooks/useScript';
 import { useCurrentLocation } from '@/features/map/hooks/useCurrentLocation';
+import { CreatePlaceInfo } from '@/features/map/components/AddPlaceModal';
 
 export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, authLoading } = useAuth();
@@ -31,6 +32,9 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const [selectedPlace, setSelectedPlace] = useState<ViewNightSpot | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isFavoriteMode, setIsFavoriteMode] = useState<boolean>(false);
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [modalMode, setModalMode] = useState<'create' | 'update'>('create');
+  const [createPlaceInfo, setCreatePlaceInfo] = useState<CreatePlaceInfo | null>(null);
 
   // 검색 관련 상태
   const [searchKeyword, setSearchKeyword] = useState<string>('');
@@ -65,6 +69,8 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
 
   // 전체 장소 정보 가져오기 (API 호출)
   const fetchViewNightSpotData = useCallback(async () => {
+    console.log('fetchViewNightSpotData');
+
     setIsLoadingPlaces(true);
 
     try {
@@ -417,36 +423,73 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   // 사용자 장소 데이터 추가
-  useEffect(() => {
-    if (!user || !totalPlaceData.length) return;
+  // useEffect(() => {
+  //   console.log('사용자 장소 데이터 추가 useEffect');
+  //   console.log('totalPlaceData.length', totalPlaceData.length);
 
-    const customPlaces = user.customPlaces || [];
+  //   if (!user || !totalPlaceData.length) return;
 
-    // 중복 방지를 위해 ID 체크
-    const existingIds = new Set(totalPlaceData.map((place) => place.ID));
+  //   const customPlaces = user.customPlaces || [];
 
-    const newCustomPlaces = customPlaces.filter((place) => !existingIds.has(place.ID));
+  //   // 중복 방지를 위해 ID 체크
+  //   const existingIds = new Set(totalPlaceData.map((place) => place.ID));
 
-    if (newCustomPlaces.length > 0) {
-      setTotalPlaceData((prev) => [...prev, ...customPlaces]);
-    }
-  }, [user, totalPlaceData]);
+  //   const newCustomPlaces = customPlaces.filter((place) => !existingIds.has(place.ID));
+
+  //   if (newCustomPlaces.length > 0) {
+  //     setTotalPlaceData((prev) => [...prev, ...customPlaces]);
+  //   }
+  // }, [user, totalPlaceData]);
 
   useEffect(() => {
     // 인증 로딩이 완료된 경우에만 데이터 로드
-    if (!authLoading) {
-      fetchViewNightSpotData();
+    if (authLoading) {
+      return;
     }
-  }, [authLoading, fetchViewNightSpotData]);
+
+    // 초기 api 데이터 로드
+    if (totalPlaceData.length === 0) {
+      fetchViewNightSpotData();
+
+      // 사용자 장소 데이터 추가
+    } else {
+      if (!user) return;
+      const customPlaces = user.customPlaces || [];
+
+      const seoulApiPlaces = totalPlaceData.filter((place) => {
+        if (!place.ID.startsWith('my_')) {
+          return true;
+        }
+      });
+      
+      const newTotalPlaceData = [...seoulApiPlaces, ...customPlaces];
+
+      const isCustomPlacesChanged =
+        newTotalPlaceData.length !== totalPlaceData.length ||
+        customPlaces.some((newplace) => {
+          const originPlace = totalPlaceData.find((originPlace) => originPlace.ID === newplace.ID);
+
+          return (
+            !originPlace ||
+            newplace.MOD_DATE !== originPlace.MOD_DATE ||
+            newplace.IS_FAVORITE !== originPlace.IS_FAVORITE
+          );
+        });
+
+      if (isCustomPlacesChanged) {
+        setTotalPlaceData(newTotalPlaceData);
+      }
+    }
+  }, [authLoading, fetchViewNightSpotData, totalPlaceData, user]);
 
   const value = {
     mapInstanceRef,
     currentMarkerRef,
     totalPlaceData,
-		visiblePlacesData,
+    visiblePlacesData,
     isLoadingPlaces,
     isFavoriteMode,
-		setIsFavoriteMode,
+    setIsFavoriteMode,
     createMarkerIcon,
     isNaverReady,
     isScriptLoading,
@@ -460,6 +503,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     setActiveFilters,
     markersRef,
     selectedMarkerRef,
+    selectedInfoWindowRef,
     resetSelectedMarkerAndInfoWindow,
     openInfoWindowForPlace,
     handlePlaceSelect,
@@ -470,6 +514,12 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     currentLocation,
     defaultCenterRef,
     isInitialSearchFitRef,
+    modalOpen,
+    setModalOpen,
+    modalMode,
+    setModalMode,
+    createPlaceInfo,
+    setCreatePlaceInfo,
   };
 
   return <MapContext.Provider value={value}>{children}</MapContext.Provider>;

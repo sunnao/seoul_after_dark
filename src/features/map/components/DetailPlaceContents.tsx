@@ -3,7 +3,7 @@ import parse from 'html-react-parser';
 import { HiOutlineStar, HiStar } from 'react-icons/hi2';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import axios from 'axios';
-import { useMapDirectionContext } from '@/features/map/context';
+import { useMapContext, useMapDirectionContext } from '@/features/map/context';
 import { useCallback } from 'react';
 import { DirectionPathResponse } from '@/features/map/context/MapDirectionContext';
 import { FaRegClock } from 'react-icons/fa';
@@ -24,6 +24,7 @@ interface NaverDirectionResponse {
 export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNightSpot }) => {
   const { addFavorite, deleteFavorite } = useAuth();
   const { clearPath, showPath, startEndPoint } = useMapDirectionContext();
+  const { setModalOpen, setModalMode } = useMapContext();
 
   const toogleFavorite = (isAddFavoriteMode: boolean) => {
     if (isAddFavoriteMode) {
@@ -82,8 +83,13 @@ export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNigh
                 {selectedPlace.ADDR}
               </p>
             </div>
-            {selectedPlace.ID.includes('my_') && (
-              <button onClick={() => alert('준비중입니다')}>
+            {selectedPlace.ID.startsWith('my_') && (
+              <button
+                onClick={() => {
+                  setModalMode('update');
+                  setModalOpen(true);
+                }}
+              >
                 <GrEdit className="mt-1 mr-2 h-8 w-6" />
               </button>
             )}

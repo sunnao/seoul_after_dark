@@ -1,3 +1,4 @@
+import { CreatePlaceInfo } from '@/features/map/components/AddPlaceModal';
 import { MarkerWithData, ViewNightSpot } from '@/features/map/types/mapTypes';
 import { createContext, useContext } from 'react';
 
@@ -28,6 +29,7 @@ export interface MapContextType {
   setActiveFilters: (filters: string[]) => void;
   markersRef: React.RefObject<MarkerWithData[]>;
   selectedMarkerRef: React.RefObject<MarkerWithData | null>;
+  selectedInfoWindowRef: React.RefObject<naver.maps.InfoWindow | null>;
   resetSelectedMarkerAndInfoWindow: () => void;
   openInfoWindowForPlace: () => void;
   handlePlaceSelect: (place: ViewNightSpot | null) => void;
@@ -38,6 +40,12 @@ export interface MapContextType {
   currentLocation: naver.maps.LatLngObjectLiteral | null;
   defaultCenterRef: React.RefObject<naver.maps.LatLngObjectLiteral>;
   isInitialSearchFitRef: React.RefObject<boolean>;
+  modalOpen: boolean;
+  setModalOpen: (modalOpen: boolean) => void;
+  modalMode: 'create' | 'update';
+  setModalMode: (modalMode: 'create' | 'update') => void;
+  createPlaceInfo: CreatePlaceInfo | null;
+  setCreatePlaceInfo: (createPlaceInfo: CreatePlaceInfo|null) => void;
 }
 
 export const MapContext = createContext<MapContextType | null>(null);
