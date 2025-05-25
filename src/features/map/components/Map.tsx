@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useCurrentLocation } from '@features/map/hooks/useCurrentLocation';
 import { MarkerWithData, ViewNightSpot } from '@features/map/types/mapTypes';
 import { useMapContext, useMapDirectionContext } from '@/features/map/context';
 
@@ -50,6 +49,8 @@ export const Map = () => {
     handlePlaceSelect,
     setIsSidebarOpen,
     setSelectedPlace,
+    isLocating,
+    getCurrentLocation,
     currentLocation,
     defaultCenterRef,
     isInitialSearchFitRef,
@@ -64,9 +65,6 @@ export const Map = () => {
   // 검색 관련 상태
   const [autoCompleteItems, setAutoCompleteItems] = useState<ViewNightSpot[]>([]);
   const [isAutoCompleteVisible, setIsAutoCompleteVisible] = useState<boolean>(false);
-
-  // 현위치 불러오기
-  const { isLocating, getCurrentLocation } = useCurrentLocation();
 
   // 폴리라인 그리기 함수
   const drawPolyline = useCallback(() => {
@@ -203,7 +201,6 @@ export const Map = () => {
 
         // 마커 클릭 이벤트
         marker.addListener('click', () => {
-          console.log('마커 클릭 이벤트, handlePlaceSelect');
           handlePlaceSelect(place);
         });
 

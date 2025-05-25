@@ -4,7 +4,7 @@ export const useCurrentLocation = () => {
   const [currentLocation, setCurrentLocation] = useState<naver.maps.LatLngObjectLiteral | null>(
     null,
   );
-  const [isLocating, setIsLocating] = useState<boolean>(false);
+  const [isLocating, setIsLocating] = useState<boolean>(true);
 
   const getCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {

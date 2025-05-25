@@ -9,7 +9,7 @@ import { HiStar } from 'react-icons/hi2';
 import { SUBJECTS } from '@/features/map/constants/subjects';
 import { useScript } from '@/hooks/useScript';
 import { useCurrentLocation } from '@/features/map/hooks/useCurrentLocation';
-import { CreatePlaceInfo } from '@/features/map/components/AddPlaceModal';
+import { CreatePlaceInfo } from '@/features/map/components/EditPlaceModal';
 
 export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, authLoading } = useAuth();
@@ -65,11 +65,10 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const { isNaverReady } = useNaverObjInitialization(isScriptLoading, scriptError);
 
   // 현위치 불러오기
-  const { currentLocation } = useCurrentLocation();
+  const { isLocating, getCurrentLocation, currentLocation } = useCurrentLocation();
 
   // 전체 장소 정보 가져오기 (API 호출)
   const fetchViewNightSpotData = useCallback(async () => {
-    console.log('fetchViewNightSpotData');
 
     setIsLoadingPlaces(true);
 
@@ -177,8 +176,6 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fitMapToMarkers = useCallback(
     (places: ViewNightSpot[]) => {
-      console.log('fitMapToMarkers', places);
-
       if (
         !mapInstanceRef.current ||
         !isNaverReady ||
@@ -511,6 +508,8 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     setIsSidebarOpen,
     selectedPlace,
     setSelectedPlace,
+    isLocating, 
+    getCurrentLocation,
     currentLocation,
     defaultCenterRef,
     isInitialSearchFitRef,
