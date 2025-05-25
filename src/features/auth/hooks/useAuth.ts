@@ -102,7 +102,6 @@ export const useAuth = () => {
         params: { property_keys: ['kakao_account.profile'] },
       });
 
-      console.log(result.data);
       return result.data;
     } catch (e) {
       console.error(e);
@@ -156,7 +155,7 @@ export const useAuth = () => {
 
         return true;
       } catch (e) {
-        console.error('로그인 실패:', e);
+        console.error('Kakao Login Failed:', e);
         return false;
       }
     },
