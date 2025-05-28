@@ -6,6 +6,7 @@ export interface MapContextType {
   mapInstanceRef: React.RefObject<naver.maps.Map | null>;
   currentMarkerRef: React.RefObject<naver.maps.Marker | null>;
   totalPlaceData: ViewNightSpot[];
+  setTotalPlaceData: (totalPlaceData: ViewNightSpot[]) => void;
   visiblePlacesData: ViewNightSpot[];
   isLoadingPlaces: boolean;
   isFavoriteMode: boolean;

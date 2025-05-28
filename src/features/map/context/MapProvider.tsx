@@ -196,8 +196,6 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         bounds.extend(position);
       });
 
-      console.log('fitMapToMarkers~~~~~~~~~~');
-
       mapInstanceRef.current.panToBounds(
         bounds,
         { duration: 200, easing: 'easeOutCubic' },
@@ -468,8 +466,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
 
           return (
             !originPlace ||
-            newplace.MOD_DATE !== originPlace.MOD_DATE ||
-            newplace.IS_FAVORITE !== originPlace.IS_FAVORITE
+            newplace.MOD_DATE !== originPlace.MOD_DATE
           );
         });
 
@@ -483,6 +480,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     mapInstanceRef,
     currentMarkerRef,
     totalPlaceData,
+    setTotalPlaceData,
     visiblePlacesData,
     isLoadingPlaces,
     isFavoriteMode,
@@ -508,7 +506,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     setIsSidebarOpen,
     selectedPlace,
     setSelectedPlace,
-    isLocating, 
+    isLocating,
     getCurrentLocation,
     currentLocation,
     defaultCenterRef,
