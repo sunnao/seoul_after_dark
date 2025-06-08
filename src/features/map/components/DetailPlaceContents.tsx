@@ -42,11 +42,13 @@ export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNigh
     } else {
       deleteFavorite(selectedPlace.ID);
     }
-    setTotalPlaceData(
-      totalPlaceData.map((place) =>
-        place.ID === selectedPlace.ID ? { ...place, IS_FAVORITE: isAddFavoriteMode } : place,
-      ),
-    );
+    if (user) {
+      setTotalPlaceData(
+        totalPlaceData.map((place) =>
+          place.ID === selectedPlace.ID ? { ...place, IS_FAVORITE: isAddFavoriteMode } : place,
+        ),
+      );
+    }
   };
 
   const fetchDirectionAPI = useCallback(async () => {
