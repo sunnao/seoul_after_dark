@@ -80,7 +80,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         const places = result.data.viewNightSpot.row;
         const placesAddIdAndFavorite: ViewNightSpot[] = places.map((place) => ({
           ...place,
-          ID: `${place.LA}_${place.LO}`,
+          ID: `${place.LA}_${place.LO}_${place.NUM}`,
           IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`${place.LA}_${place.LO}`),
         }));
 

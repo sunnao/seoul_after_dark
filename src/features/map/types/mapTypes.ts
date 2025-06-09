@@ -7,6 +7,7 @@ export interface ViewNightSpotResult {
 }
 
 export interface ApiViewNightSpot {
+  NUM: string;
   SUBJECT_CD: string;
   TITLE: string;
   ADDR: string;
