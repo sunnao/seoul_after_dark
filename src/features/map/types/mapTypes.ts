@@ -35,9 +35,17 @@ export interface ApiResponse {
   viewNightSpot: ViewNightSpotResult;
 }
 
+export interface clusteredPlace {
+  representativeLat: string;
+  representativeLng: string;
+  places: ViewNightSpot[];
+  count: number;
+}
+
 export interface MarkerWithData {
   marker: naver.maps.Marker;
   placeData: ViewNightSpot;
+  placesGroup: clusteredPlace;
 }
 
 export interface Subject {
