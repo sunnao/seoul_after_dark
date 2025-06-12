@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { MarkerWithData, ViewNightSpot } from '@features/map/types/mapTypes';
+import { MarkerWithData, ViewNightSpot, clusteredPlace } from '@features/map/types/mapTypes';
 import { useMapContext, useMapDirectionContext } from '@/features/map/context';
 
 import { MdOutlineMyLocation } from 'react-icons/md';
@@ -60,6 +60,7 @@ export const Map = () => {
     setModalMode,
     createPlaceInfo,
     setCreatePlaceInfo,
+    groupPlaceByLocation,
   } = useMapContext();
 
   // 검색 관련 상태
@@ -167,67 +168,135 @@ export const Map = () => {
   }, [pathPointIndex, directionResult, moveToPathPoint]);
 
   // 마커 생성 함수
-  const createMarker = useCallback(
+  const createSingleMarker = useCallback(
     (place: ViewNightSpot) => {
       if (!mapInstanceRef.current || !isNaverReady || !place.LA || !place.LO || !window.naver)
         return null;
 
       const { naver } = window;
 
-      try {
-        const isSelectedPlace = selectedMarkerRef.current
-          ? selectedMarkerRef.current.placeData.ID === place.ID
-          : false;
-        const defaultZIndex = 50;
-        const iconConfig = createMarkerIcon(place, isSelectedPlace);
+      const isSelectedPlace = selectedMarkerRef.current
+        ? selectedMarkerRef.current.placeData.ID === place.ID
+        : false;
+      const defaultZIndex = 50;
+      const iconConfig = createMarkerIcon(place, isSelectedPlace);
 
-        if (!iconConfig) return null;
+      if (!iconConfig) return null;
 
-        // 마커 생성 시 처음부터 지도에 표시
-        const marker = new naver.maps.Marker({
-          position: new naver.maps.LatLng(Number(place.LA), Number(place.LO)),
-          map: undefined, // 초기에는 지도에 표시하지 않음
-          icon: iconConfig,
-          zIndex: isSelectedPlace ? 1000 : defaultZIndex,
-        });
+      // 마커 생성 시 처음부터 지도에 표시
+      const marker = new naver.maps.Marker({
+        position: new naver.maps.LatLng(Number(place.LA), Number(place.LO)),
+        map: undefined, // 초기에는 지도에 표시하지 않음
+        icon: iconConfig,
+        zIndex: isSelectedPlace ? 1000 : defaultZIndex,
+      });
 
-        // 마커 데이터 쌍 생성
-        const markerWithData = { marker, placeData: place };
+      // 마커 데이터 쌍 생성
+      const markerWithData = {
+        marker,
+        placeData: place,
+        placesGroup: {
+          representativeLat: place.LA,
+          representativeLng: place.LO,
+          places: [place],
+          count: 1,
+        },
+      };
 
-        if (isSelectedPlace) {
-          selectedMarkerRef.current = markerWithData;
-          setSelectedPlace(place);
-        }
+      if (isSelectedPlace) {
+        selectedMarkerRef.current = markerWithData;
+        setSelectedPlace(place);
+      }
 
-        // 마커 클릭 이벤트
-        marker.addListener('click', () => {
-          handlePlaceSelect(place);
-        });
+      // 마커 클릭 이벤트
+      marker.addListener('click', () => {
+        handlePlaceSelect(place);
+      });
 
-        // 마우스 오버 이벤트
-        marker.addListener('mouseover', () => {
-          marker.setZIndex(1001);
-        });
+      // 마우스 오버 이벤트
+      marker.addListener('mouseover', () => {
+        marker.setZIndex(1001);
+      });
 
-        // 마우스 아웃 이벤트
-        marker.addListener('mouseout', () => {
-          if (selectedMarkerRef.current) {
-            const { placeData: selectedData } = selectedMarkerRef.current;
-            if (selectedData.ID !== place.ID) {
-              marker.setZIndex(defaultZIndex);
-            }
-          } else {
+      // 마우스 아웃 이벤트
+      marker.addListener('mouseout', () => {
+        if (selectedMarkerRef.current) {
+          const { placeData: selectedData } = selectedMarkerRef.current;
+          if (selectedData.ID !== place.ID) {
             marker.setZIndex(defaultZIndex);
           }
-        });
+        } else {
+          marker.setZIndex(defaultZIndex);
+        }
+      });
 
-        return markerWithData;
-      } catch (e) {
-        console.error('Failed to create marker', e, place);
-        return null;
-      }
+      return markerWithData;
     },
     [isNaverReady, createMarkerIcon, handlePlaceSelect, setSelectedPlace],
+  );
+
+  // 그룹 마커 생성 함수
+  const createGroupMarker = useCallback(
+    (group: clusteredPlace) => {
+      if (!isNaverReady || !window.naver) return null;
+
+      const { naver } = window;
+      const representativePlace = group.places[0];
+      const defaultZIndex = 50;
+
+      const marker = new naver.maps.Marker({
+        position: new naver.maps.LatLng(
+          Number(group.representativeLat),
+          Number(group.representativeLng),
+        ),
+        map: undefined,
+        icon: {
+          content: renderToString(
+            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-300 bg-pink-800 shadow-lg">
+              <span className="text-white">{group.count}</span>
+            </div>,
+          ),
+          anchor: new naver.maps.Point(20, 20),
+        },
+        zIndex: defaultZIndex,
+      });
+
+      // 마커 클릭 이벤트
+      naver.maps.Event.addListener(marker, 'click', () => {
+        // 기존 선택 초기화
+        resetSelectedMarkerAndInfoWindow();
+
+        marker.setZIndex(1000);
+
+        selectedMarkerRef.current = {
+          marker,
+          placeData: representativePlace,
+          placesGroup: group,
+        };
+
+        // 인포윈도우 열기
+        openInfoWindowForPlace();
+      });
+
+      // 마우스 오버 이벤트
+      marker.addListener('mouseover', () => {
+        marker.setZIndex(1001);
+      });
+
+      // 마우스 아웃 이벤트
+      marker.addListener('mouseout', () => {
+        if (selectedMarkerRef.current?.marker !== marker) {
+          marker.setZIndex(defaultZIndex);
+        }
+      });
+
+      return {
+        marker,
+        placeData: representativePlace,
+        placesGroup: group,
+      };
+    },
+    [isNaverReady, createMarkerIcon, resetSelectedMarkerAndInfoWindow, openInfoWindowForPlace],
   );
 
   // 경로 표시 상태가 변경될 때 폴리라인 업데이트
@@ -243,8 +312,7 @@ export const Map = () => {
 
   // 지도 이동 완료 후 핸들러
   const handleMapIdle = useCallback(() => {
-
-    if (selectedMarkerRef.current) {
+    if (selectedMarkerRef.current && selectedMarkerRef.current.placesGroup.count === 1) {
       // 선택된 마커가 있으면 인포윈도우 열기
       const { marker, placeData } = selectedMarkerRef.current;
 
@@ -344,10 +412,23 @@ export const Map = () => {
     // 새 마커 생성
     const newMarkers: MarkerWithData[] = [];
 
-    totalPlaceData.forEach((place: ViewNightSpot) => {
-      const markerWithData = createMarker(place);
-      if (markerWithData) {
-        newMarkers.push(markerWithData);
+    const groupedPlaces = groupPlaceByLocation(totalPlaceData);
+
+    groupedPlaces.forEach((placeGroup) => {
+      const representativePlace = placeGroup.places[0];
+
+      if (placeGroup.count > 1) {
+        // 그룹 마커 생성
+        const groupMarker = createGroupMarker(placeGroup);
+        if (groupMarker) {
+          newMarkers.push(groupMarker);
+        }
+      } else {
+        // 단일 마커 생성 (기존 방식)
+        const singleMarker = createSingleMarker(representativePlace);
+        if (singleMarker) {
+          newMarkers.push(singleMarker);
+        }
       }
     });
 
@@ -355,7 +436,7 @@ export const Map = () => {
 
     // 필터링 및 가시성 업데이트
     updateVisibleMarkers();
-  }, [isNaverReady, totalPlaceData, createMarker, updateVisibleMarkers]);
+  }, [isNaverReady, totalPlaceData, groupPlaceByLocation, createSingleMarker, createGroupMarker, updateVisibleMarkers]);
 
   // 필터 또는 검색어 변경 시 필터링 업데이트
   useEffect(() => {
@@ -481,7 +562,7 @@ export const Map = () => {
                   alert('로그인이 필요한 기능입니다.');
                   return;
                 }
-                setModalMode('create')
+                setModalMode('create');
                 setModalOpen(true);
                 setCreatePlaceInfo({
                   latlng: latlng,

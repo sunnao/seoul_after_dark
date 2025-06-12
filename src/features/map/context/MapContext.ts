@@ -49,7 +49,7 @@ export interface MapContextType {
   setModalMode: (modalMode: 'create' | 'update') => void;
   createPlaceInfo: CreatePlaceInfo | null;
   setCreatePlaceInfo: (createPlaceInfo: CreatePlaceInfo | null) => void;
-  groupedPlaceByLocation: clusteredPlace[];
+  groupPlaceByLocation: (places: ViewNightSpot[]) => clusteredPlace[];
 }
 
 export const MapContext = createContext<MapContextType | null>(null);
