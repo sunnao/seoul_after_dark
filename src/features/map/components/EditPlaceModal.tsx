@@ -91,6 +91,7 @@ export const EditPlaceModal = ({
     }
 
     const newPlace: ViewNightSpot = {
+      NUM: '',
       ID: `my_${createPlaceInfo.latlng.y}_${createPlaceInfo.latlng.x}`,
       SUBJECT_CD: subject,
       TITLE: title,
