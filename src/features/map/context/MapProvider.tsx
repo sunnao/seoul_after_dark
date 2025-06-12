@@ -86,7 +86,9 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         const placesAddIdAndFavorite: ViewNightSpot[] = places.map((place) => ({
           ...place,
           ID: `${place.LA}_${place.LO}_${place.NUM}`,
-          IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`${place.LA}_${place.LO}`),
+          IS_FAVORITE: (user?.favoritePlaceIds || []).includes(
+            `${place.LA}_${place.LO}_${place.NUM}`,
+          ),
         }));
 
         setTotalPlaceData(placesAddIdAndFavorite);
@@ -381,7 +383,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
       // 여러 장소인 경우 목록으로 표시
       const placesListHtml = placesGroup.places
         .map((place: ViewNightSpot) => {
-          const iconContent = (createMarkerIcon(place, false)?.content);
+          const iconContent = createMarkerIcon(place, false)?.content;
           return `
           <div 
             id="place-${place.ID}" 
@@ -600,7 +602,11 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
       // 사용자 장소 데이터 추가
     } else {
       if (!user) return;
-      const customPlaces = user.customPlaces || [];
+
+      const customPlaces = (user.customPlaces || []).map((place) => ({
+        ...place,
+        IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`my_${place.LA}_${place.LO}`),
+      }));
 
       const seoulApiPlaces = totalPlaceData.filter((place) => {
         if (!place.ID.startsWith('my_')) {
