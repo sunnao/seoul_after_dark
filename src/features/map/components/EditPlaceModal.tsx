@@ -24,7 +24,7 @@ export const EditPlaceModal = ({
   createPlaceInfo?: CreatePlaceInfo;
   updatePlaceInfo?: ViewNightSpot;
 }) => {
-  const { user, updateUser } = useAuth();
+  const { addCustomPlace, updateCustomPlace, deleteCustomPlace } = useAuth();
   const {
     handlePlaceSelect,
     setIsSidebarOpen,
@@ -86,7 +86,7 @@ export const EditPlaceModal = ({
     addr: string;
     contents: string;
   }) => {
-    if (!user || !createPlaceInfo) {
+    if (!createPlaceInfo) {
       return;
     }
 
@@ -104,9 +104,7 @@ export const EditPlaceModal = ({
       IS_FAVORITE: false,
     };
 
-    const newUserInfo = { ...user };
-    newUserInfo.customPlaces = [...(newUserInfo.customPlaces || []), newPlace];
-    updateUser(newUserInfo);
+    addCustomPlace(newPlace);
 
     onClose();
     setTimeout(() => handlePlaceSelect(newPlace), 500);
@@ -129,7 +127,7 @@ export const EditPlaceModal = ({
     url: string;
     contents: string;
   }) => {
-    if (!user || !updatePlaceInfo) {
+    if (!updatePlaceInfo) {
       return;
     }
 
@@ -147,45 +145,33 @@ export const EditPlaceModal = ({
       },
     };
 
-    const newUserInfo = { ...user };
-
-    const placeIndex = (newUserInfo.customPlaces || []).findIndex(
-      (place) => place.ID === updatedPlace.ID,
-    );
-
-    if (placeIndex === -1 || !newUserInfo.customPlaces) {
-      alert('등록되어있지 않은 장소입니다.');
-      return;
-    } else {
+    updateCustomPlace(updatedPlace);
 			
-			if (selectedInfoWindowRef.current) {
-        selectedInfoWindowRef.current.close();
-        selectedInfoWindowRef.current = null;
-      }
-			
-			if (selectedMarkerRef.current) {
-				const { marker } = selectedMarkerRef.current;
-        marker.setMap(null);
-        selectedMarkerRef.current = null;
-      }
-			// setSelectedPlace(null);
-			
-      newUserInfo.customPlaces[placeIndex] = updatedPlace;
+    if (selectedInfoWindowRef.current) {
+      selectedInfoWindowRef.current.close();
+      selectedInfoWindowRef.current = null;
     }
-
-    updateUser(newUserInfo);
+    
+    if (selectedMarkerRef.current) {
+      const { marker } = selectedMarkerRef.current;
+      marker.setMap(null);
+      selectedMarkerRef.current = null;
+    }
+			// setSelectedPlace(null);
     onClose();
 		setTimeout(() => handlePlaceSelect(updatedPlace), 500);
   };
 	
 	const deletePlace = () => {
-		if (!user || !updatePlaceInfo) {
+		if (!updatePlaceInfo) {
       return;
     }
-		const newUserInfo = { ...user };
-		newUserInfo.customPlaces = (newUserInfo.customPlaces || []).filter(
-      (place) => place.ID !== updatePlaceInfo.ID,
-    );
+    
+    const checkDelete = confirm('정말 삭제하시겠습니까?');
+    if (!checkDelete) {
+      return;
+    } 
+		deleteCustomPlace(updatePlaceInfo);
 		
 		if (selectedInfoWindowRef.current) {
       selectedInfoWindowRef.current.close();
@@ -202,7 +188,6 @@ export const EditPlaceModal = ({
 		
 		onClose();
 		setIsSidebarOpen(false);
-		setTimeout(() => updateUser(newUserInfo), 500);
 	}
 
   return (

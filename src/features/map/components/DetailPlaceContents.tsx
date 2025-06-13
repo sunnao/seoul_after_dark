@@ -23,7 +23,7 @@ interface NaverDirectionResponse {
 }
 
 export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNightSpot }) => {
-  const { user, updateUser, addFavorite, deleteFavorite } = useAuth();
+  const { user, addFavorite, deleteFavorite, deleteCustomPlace } = useAuth();
   const { clearPath, showPath, startEndPoint } = useMapDirectionContext();
   const {
     setModalOpen,
@@ -90,10 +90,7 @@ export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNigh
     
     setIsSidebarOpen(false);
     
-    const newUserInfo = { ...user };
-    newUserInfo.customPlaces = (newUserInfo.customPlaces || []).filter(
-      (place) => place.ID !== selectedPlace.ID,
-    );
+    deleteCustomPlace(selectedPlace);
 
     if (selectedInfoWindowRef.current) {
       selectedInfoWindowRef.current.close();
@@ -107,7 +104,6 @@ export const DetailPlaceContents = ({ selectedPlace }: { selectedPlace: ViewNigh
     }
     
     setSelectedPlace(null);
-    setTimeout(() => updateUser(newUserInfo), 500);
   };
 
   return (

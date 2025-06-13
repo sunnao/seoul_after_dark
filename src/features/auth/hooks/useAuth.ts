@@ -7,6 +7,7 @@ import {
 import { useAuthContext } from '@/features/auth/contexts';
 import axios from 'axios';
 import { useCallback } from 'react';
+import { ViewNightSpot } from '@/features/map/types/mapTypes';
 
 export const useAuth = () => {
   const { user, setAppUser, authLoading } = useAuthContext();
@@ -279,6 +280,56 @@ export const useAuth = () => {
 
     updateUser(updatedUser);
   };
+  
+  const addCustomPlace = (newPlace: ViewNightSpot) => {
+    if (!user) {
+      logout();
+      alert('로그인이 필요한 기능입니다.');
+      return;
+    }
+    
+    const newUserInfo = { ...user };
+    newUserInfo.customPlaces = [...(newUserInfo.customPlaces || []), newPlace];
+    updateUser(newUserInfo);
+  }
+  
+  const updateCustomPlace = (newPlace: ViewNightSpot) => {
+    if (!user) {
+      logout();
+      alert('로그인이 필요한 기능입니다.');
+      return;
+    }
+
+    const newUserInfo = { ...user };
+    const placeIndex = (newUserInfo.customPlaces || []).findIndex(
+      (place) => place.ID === newPlace.ID,
+    );
+
+    if (placeIndex === -1 || !newUserInfo.customPlaces) {
+      alert('등록되어있지 않은 장소입니다.');
+      return;
+    }
+    newUserInfo.customPlaces[placeIndex] = newPlace;
+    updateUser(newUserInfo);
+  };
+  
+  const deleteCustomPlace = (selectedPlace: ViewNightSpot) => {
+    if (!user) {
+      logout();
+      alert('로그인이 필요한 기능입니다.');
+      return;
+    }
+
+    const newUserInfo = { ...user };
+    newUserInfo.customPlaces = (newUserInfo.customPlaces || []).filter(
+      (place) => place.ID !== selectedPlace.ID,
+    );
+    newUserInfo.favoritePlaceIds = (newUserInfo.favoritePlaceIds || []).filter(
+      (placeId) => placeId !== selectedPlace.ID,
+    );
+    
+    updateUser(newUserInfo);
+  };
 
   return {
     user,
@@ -290,5 +341,8 @@ export const useAuth = () => {
     authLoading,
     addFavorite,
     deleteFavorite,
+    addCustomPlace,
+    updateCustomPlace,
+    deleteCustomPlace,
   };
 };

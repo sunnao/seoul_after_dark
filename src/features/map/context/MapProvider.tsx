@@ -81,6 +81,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
       const url = `/api/${import.meta.env.VITE_SEOUL_API_KEY}/json/viewNightSpot/1/1000`;
       const result = await axios.get<ApiResponse>(url);
 
+      const totalPlaceData: ViewNightSpot[] = [];
       if (result.data.viewNightSpot.RESULT.CODE === 'INFO-000') {
         const places = result.data.viewNightSpot.row;
         const placesAddIdAndFavorite: ViewNightSpot[] = places.map((place) => ({
@@ -90,9 +91,17 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
             `${place.LA}_${place.LO}_${place.NUM}`,
           ),
         }));
-
-        setTotalPlaceData(placesAddIdAndFavorite);
+        
+        totalPlaceData.push(...placesAddIdAndFavorite);
       }
+      if (!user) return;
+      const customPlacesAddFavorite = (user.customPlaces || []).map((place) => ({
+        ...place,
+        IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`my_${place.LA}_${place.LO}`),
+      }));
+      totalPlaceData.push(...customPlacesAddFavorite);
+      
+      setTotalPlaceData(totalPlaceData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -607,13 +616,8 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         ...place,
         IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`my_${place.LA}_${place.LO}`),
       }));
-
-      const seoulApiPlaces = totalPlaceData.filter((place) => {
-        if (!place.ID.startsWith('my_')) {
-          return true;
-        }
-      });
-
+      
+      const seoulApiPlaces = totalPlaceData.filter((place) => !place.ID.startsWith('my_'));
       const newTotalPlaceData = [...seoulApiPlaces, ...customPlaces];
 
       const isCustomPlacesChanged =
