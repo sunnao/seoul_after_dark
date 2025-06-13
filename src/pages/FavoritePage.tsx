@@ -8,7 +8,7 @@ import { ImSpinner2 } from 'react-icons/im';
 export const FavoritePage = () => {
   const { user, authLoading, deleteFavorite } = useAuth();
   const [isLoadingPlaces, setIsLoadingPlaces] = useState(false);
-  const [totalFavoritePlaces, setTotalFavoritePlaces] = useState<ViewNightSpot[]>([]);
+  const [totalPlaces, setTotalPlaces] = useState<ViewNightSpot[]>([]);
   const [favoritePlaces, setFavoritePlaces] = useState<ViewNightSpot[]>([]);
 
   const fetchViewNightSpotData = useCallback(async () => {
@@ -19,22 +19,30 @@ export const FavoritePage = () => {
       const url = `/api/${import.meta.env.VITE_SEOUL_API_KEY}/json/viewNightSpot/1/1000`;
       const result = await axios.get<ApiResponse>(url);
 
+      const totalPlaceData: ViewNightSpot[] = [];
       if (result.data.viewNightSpot.RESULT.CODE === 'INFO-000') {
         const places = result.data.viewNightSpot.row;
         const placesAddIdAndFavorite: ViewNightSpot[] = places.map((place) => ({
           ...place,
-          ID: `${place.LA}_${place.LO}`,
-          IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`${place.LA}_${place.LO}`),
+          ID: `${place.LA}_${place.LO}_${place.NUM}`,
+          IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`${place.LA}_${place.LO}_${place.NUM}`),
         }));
-        
-        setTotalFavoritePlaces(placesAddIdAndFavorite);
+        totalPlaceData.push(...placesAddIdAndFavorite);
       }
+      if (!user) return;
+      const customPlacesAddFavorite = (user.customPlaces || []).map((place) => ({
+        ...place,
+        IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`my_${place.LA}_${place.LO}`),
+      }));
+      totalPlaceData.push(...customPlacesAddFavorite);
+
+      setTotalPlaces(totalPlaceData);
     } catch (e) {
       console.error(e);
     } finally {
       setIsLoadingPlaces(false);
     }
-  }, [authLoading]);
+  }, [user, authLoading]);
 
   const handleDeleteFavorite = (id: string) => {
     deleteFavorite(id);
@@ -45,15 +53,9 @@ export const FavoritePage = () => {
   }, [fetchViewNightSpotData]);
   
   useEffect(() => {
-    
-    const placesAddIdAndFavorite = totalFavoritePlaces.map((place) => ({
-      ...place,
-      ID: `${place.LA}_${place.LO}`,
-      IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`${place.LA}_${place.LO}`),
-    }));
-
-    setFavoritePlaces(placesAddIdAndFavorite.filter((place) => place.IS_FAVORITE));
-  }, [totalFavoritePlaces, user?.favoritePlaceIds]);
+    if (totalPlaces.length === 0) return;
+    setFavoritePlaces(totalPlaces.filter((place) => place.IS_FAVORITE));
+  }, [totalPlaces, user?.favoritePlaceIds]);
 
   return (
     <div className="h-full w-full">
