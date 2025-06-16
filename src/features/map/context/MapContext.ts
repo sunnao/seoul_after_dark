@@ -1,5 +1,5 @@
 import { CreatePlaceInfo } from '@/features/map/components/EditPlaceModal';
-import { MarkerWithData, ViewNightSpot, clusteredPlace } from '@/features/map/types/mapTypes';
+import { MarkerWithData, ViewNightSpot, ClusteredPlace, GroupMarkerWithData } from '@/features/map/types/mapTypes';
 import { createContext, useContext } from 'react';
 
 export interface MapContextType {
@@ -49,7 +49,8 @@ export interface MapContextType {
   setModalMode: (modalMode: 'create' | 'update') => void;
   createPlaceInfo: CreatePlaceInfo | null;
   setCreatePlaceInfo: (createPlaceInfo: CreatePlaceInfo | null) => void;
-  groupPlaceByLocation: (places: ViewNightSpot[]) => clusteredPlace[];
+  groupPlaceByLocation: (places: ViewNightSpot[]) => ClusteredPlace[];
+  backupGroupMarkerRef: React.RefObject<GroupMarkerWithData | null>;
 }
 
 export const MapContext = createContext<MapContextType | null>(null);

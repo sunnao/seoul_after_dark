@@ -3,9 +3,11 @@ import axios from 'axios';
 import { MapContext, useMapDirectionContext } from '@/features/map/context';
 import {
   ApiResponse,
-  MarkerWithData,
   ViewNightSpot,
-  clusteredPlace,
+  ClusteredPlace,
+  MarkerWithData,
+  GroupMarkerWithData,
+  SingleMarkerWithData,
 } from '@/features/map/types/mapTypes';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useNaverObjInitialization } from '@features/map/hooks/useNaverObjInitialization';
@@ -32,7 +34,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const markersRef = useRef<MarkerWithData[]>([]);
   const selectedInfoWindowRef = useRef<naver.maps.InfoWindow | null>(null);
   const selectedMarkerRef = useRef<MarkerWithData | null>(null);
-  const backupGroupMarkerRef = useRef<MarkerWithData | null>(null);
+  const backupGroupMarkerRef = useRef<GroupMarkerWithData | null>(null);
 
   // UI 상태
   const [selectedPlace, setSelectedPlace] = useState<ViewNightSpot | null>(null);
@@ -91,7 +93,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
             `${place.LA}_${place.LO}_${place.NUM}`,
           ),
         }));
-        
+
         totalPlaceData.push(...placesAddIdAndFavorite);
       }
       if (!user) return;
@@ -100,7 +102,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`my_${place.LA}_${place.LO}`),
       }));
       totalPlaceData.push(...customPlacesAddFavorite);
-      
+
       setTotalPlaceData(totalPlaceData);
     } catch (e) {
       console.error(e);
@@ -176,7 +178,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   // 중복 위치 그룹화 (마커 표시용)
   const groupPlaceByLocation = useCallback((places: ViewNightSpot[]) => {
     const locationGroups: {
-      [key: string]: clusteredPlace;
+      [key: string]: ClusteredPlace;
     } = {};
     const tolerance = 0.0001; // 위치 허용 오차
 
@@ -186,8 +188,8 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (!locationGroups[key]) {
         locationGroups[key] = {
-          representativeLat: place.LA,
-          representativeLng: place.LO,
+          representativeLat: Number(place.LA),
+          representativeLng: Number(place.LO),
           places: [],
           count: 0,
         };
@@ -257,15 +259,34 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (isSearchMode) {
       // 검색 모드일 때는 필터링된 모든 마커 표시
-      markersRef.current.forEach(({ marker, placeData }) => {
-        const isPassFavorite = isFavoriteMode ? placeData.IS_FAVORITE : true;
+      markersRef.current.forEach((markerObj) => {
+        const { marker, type } = markerObj;
 
-        const shouldShow = filtered.some((place) => place.ID === placeData.ID) && isPassFavorite;
+        if (type === 'single') {
+          const { pdata } = markerObj;
+          const isPassFavorite = isFavoriteMode ? pdata.IS_FAVORITE : true;
 
-        marker.setMap(shouldShow ? mapInstanceRef.current : null);
+          const shouldShow = filtered.some((place) => place.ID === pdata.ID) && isPassFavorite;
 
-        if (shouldShow) {
-          visiblePlaces.push(placeData);
+          marker.setMap(shouldShow ? mapInstanceRef.current : null);
+
+          if (shouldShow) {
+            visiblePlaces.push(pdata);
+          }
+        } else {
+          const { pdataList } = markerObj;
+
+          pdataList.forEach((pdata) => {
+            const isPassFavorite = isFavoriteMode ? pdata.IS_FAVORITE : true;
+
+            const shouldShow = filtered.some((place) => place.ID === pdata.ID) && isPassFavorite;
+
+            marker.setMap(shouldShow ? mapInstanceRef.current : null);
+
+            if (shouldShow) {
+              visiblePlaces.push(pdata);
+            }
+          });
         }
       });
 
@@ -274,52 +295,169 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         fitMapToMarkers(filtered);
       }
     } else if (isShowingPath) {
-      markersRef.current.forEach(({ marker, placeData }) => {
-        const isSelectedMarker = selectedMarkerRef.current?.placeData.ID === placeData.ID;
-        marker.setMap(isSelectedMarker ? mapInstanceRef.current : null);
-
-        if (isSelectedMarker) {
-          visiblePlaces.push(placeData);
+      markersRef.current.forEach((markerObj) => {
+        const { marker, type } = markerObj;
+        if (type === 'single' && selectedMarkerRef.current?.type === 'single') {
+          const isSelectedMarker = selectedMarkerRef.current?.pdata.ID === markerObj.pdata.ID;
+          marker.setMap(isSelectedMarker ? mapInstanceRef.current : null);
+          if (isSelectedMarker) {
+            visiblePlaces.push(markerObj.pdata);
+          }
         }
       });
     } else {
       // 일반 모드일 때는 지도 영역 내 마커만 표시
       const mapBounds = mapInstanceRef.current.getBounds();
 
-      markersRef.current.forEach(({ marker, placeData }) => {
-        const isInBounds = mapBounds.hasPoint(marker.getPosition());
-        const isPassFilter = filtered.some((place) => place.ID === placeData.ID);
-        const isPassFavorite = isFavoriteMode ? placeData.IS_FAVORITE : true;
+      markersRef.current.forEach((markerObj, index) => {
+        const { marker, type } = markerObj;
+        
+        if (type === 'single') {
+          const { pdata } = markerObj;
+          const isInBounds = mapBounds.hasPoint(marker.getPosition());
+          const isPassFilter = filtered.some((place) => place.ID === pdata.ID);
+          const isPassFavorite = isFavoriteMode ? pdata.IS_FAVORITE : true;
 
-        const shouldShow = isInBounds && isPassFilter && isPassFavorite;
-        marker.setMap(shouldShow ? mapInstanceRef.current : null);
+          const shouldShow = isInBounds && isPassFilter && isPassFavorite;
+          marker.setMap(shouldShow ? mapInstanceRef.current : null);
 
-        if (shouldShow) {
-          visiblePlaces.push(placeData);
+          if (shouldShow) {
+            visiblePlaces.push(pdata);
+          }
+        } else {
+          // type === 'group'
+          const { pdataList } = markerObj;
+          const isInBounds = mapBounds.hasPoint(marker.getPosition());
+
+          // 필터링된 장소들만 추출
+          const filteredPdataList = pdataList.filter((pdata) => {
+            const isPassFilter = filtered.some((place) => place.ID === pdata.ID);
+            const isPassFavorite = isFavoriteMode ? pdata.IS_FAVORITE : true;
+            return isPassFilter && isPassFavorite;
+          });
+
+          // 필터링 결과에 따라 마커 처리
+          if (filteredPdataList.length === 0) {
+            // 보여줄 장소가 없으면 마커 숨기기
+            marker.setMap(null);
+          } else if (filteredPdataList.length === 1) {
+            // 1개만 남으면 싱글 마커로 교체
+            marker.setMap(null); // 기존 그룹 마커 제거
+
+            // 개별 마커 생성
+            const { naver } = window;
+            const individualMarker = new naver.maps.Marker({
+              position: new naver.maps.LatLng(
+                Number(filteredPdataList[0].LA),
+                Number(filteredPdataList[0].LO),
+              ),
+              map: undefined,
+              icon: createMarkerIcon(filteredPdataList[0], false)!,
+              zIndex: 50,
+            });
+
+            const newSingleMarkerObj: SingleMarkerWithData = {
+              marker: individualMarker,
+              type: 'single',
+              lat: Number(filteredPdataList[0].LA),
+              lng: Number(filteredPdataList[0].LO),
+              pdata: filteredPdataList[0],
+            };
+
+            // 마커 클릭 이벤트
+            newSingleMarkerObj.marker.addListener('click', () => {
+              if (backupGroupMarkerRef.current) {
+                backupGroupMarkerRef.current = null;
+              }
+
+              handlePlaceSelect(filteredPdataList[0]);
+            });
+
+            // 마우스 오버 이벤트
+            newSingleMarkerObj.marker.addListener('mouseover', () => {
+              newSingleMarkerObj.marker.setZIndex(1001);
+            });
+
+            // 마우스 아웃 이벤트
+            newSingleMarkerObj.marker.addListener('mouseout', () => {
+              if (selectedMarkerRef.current?.marker !== marker) {
+                newSingleMarkerObj.marker.setZIndex(50);
+              }
+            });
+
+            if (isInBounds) {
+              newSingleMarkerObj.marker.setMap(mapInstanceRef.current);
+              // markersRef 배열에서 교체
+              markersRef.current[index] = newSingleMarkerObj;
+            }
+            visiblePlaces.push(...filteredPdataList);
+          } else {
+            // 2개 이상이면 그룹 마커 유지하되 개수 업데이트
+            if (filteredPdataList.length !== pdataList.length) {
+              // 개수가 변경된 경우 아이콘 업데이트
+              const updatedIcon = {
+                content: renderToString(
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-300 bg-pink-800 shadow-lg">
+                    <span className="text-white">{filteredPdataList.length}</span>
+                  </div>,
+                ),
+                anchor: new window.naver.maps.Point(20, 20),
+              };
+              marker.setIcon(updatedIcon);
+
+              // markersRef의 pdataList 업데이트
+              markersRef.current[index] = {
+                ...markerObj,
+                pdataList: filteredPdataList,
+              };
+            }
+
+            if (isInBounds) {
+              marker.setMap(mapInstanceRef.current);
+            } else {
+              marker.setMap(null);
+            }
+
+            visiblePlaces.push(...filteredPdataList);
+          }
         }
       });
     }
 
     if (selectedMarkerRef.current) {
-      const { marker, placeData } = selectedMarkerRef.current;
-      if (isFavoriteMode) {
-        if (selectedInfoWindowRef.current && !placeData.IS_FAVORITE) {
-          selectedInfoWindowRef.current.close();
-          selectedInfoWindowRef.current = null;
-        }
-      } else {
-        // 선택된 마커가 있으면 항상 보이게 처리
-        marker.setMap(mapInstanceRef.current);
 
-        // 선택된 장소가 목록에 없으면 추가
-        if (!visiblePlaces.some((place) => place.ID === placeData.ID)) {
-          visiblePlaces.push(placeData);
+      const { marker, type } = selectedMarkerRef.current;
+
+      if (type === 'single') {
+        const { pdata } = selectedMarkerRef.current;
+
+        if (isFavoriteMode) {
+          if (selectedInfoWindowRef.current && !pdata.IS_FAVORITE) {
+            selectedInfoWindowRef.current.close();
+            selectedInfoWindowRef.current = null;
+          }
+        } else {
+          // 선택된 마커가 있으면 항상 보이게 처리
+          marker.setMap(mapInstanceRef.current);
+
+          // 선택된 장소가 목록에 없으면 추가
+          if (!visiblePlaces.some((place) => place.ID === pdata.ID)) {
+            visiblePlaces.push(pdata);
+          }
         }
       }
     }
 
     setVisiblePlacesData(visiblePlaces);
-  }, [isShowingPath, isNaverReady, filterPlaces, isSearchMode, isFavoriteMode, fitMapToMarkers]);
+  }, [
+    isShowingPath,
+    isNaverReady,
+    filterPlaces,
+    isSearchMode,
+    isFavoriteMode,
+    fitMapToMarkers,
+    createMarkerIcon,
+  ]);
 
   // 사이드바 열기/닫기 함수
   const openSidebar = useCallback((place: ViewNightSpot | null = null) => {
@@ -337,41 +475,40 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
 
     // 선택된 마커 스타일 초기화
     if (selectedMarkerRef.current) {
-      // 그룹에서 온 개별 선택인지 확인
-      if (backupGroupMarkerRef.current) {
-        selectedMarkerRef.current.marker.setMap(null);
-        backupGroupMarkerRef.current.marker.setMap(mapInstanceRef.current);
+      const { marker } = selectedMarkerRef.current;
 
-        // markersRef에서 해당 마커 교체
-        const markerIndex = markersRef.current.findIndex(
-          (m) =>
-            m.placesGroup &&
-            m.placesGroup.representativeLat ===
-              backupGroupMarkerRef.current!.placesGroup!.representativeLat &&
-            m.placesGroup.representativeLng ===
-              backupGroupMarkerRef.current!.placesGroup!.representativeLng,
-        );
+      if (selectedMarkerRef.current.type === 'single') {
+        const { pdata } = selectedMarkerRef.current;
 
-        if (markerIndex !== -1) {
-          markersRef.current[markerIndex] = backupGroupMarkerRef.current;
-        }
-
-        // 원본 그룹 정보 초기화
-        backupGroupMarkerRef.current = null;
-        selectedMarkerRef.current = null;
-      } else {
-        const { marker, placeData, placesGroup } = selectedMarkerRef.current;
-        if (placesGroup.count === 1) {
-          const iconConfig = createMarkerIcon(placeData, false);
-
+        if (!backupGroupMarkerRef.current) {
+          // 개별마커 -> 크기복원
+          const iconConfig = createMarkerIcon(pdata, false);
           if (iconConfig) {
             marker.setIcon(iconConfig);
           }
           marker.setZIndex(50);
+        } else {
+
+          // 개별마커 -> 그룹마커
+          selectedMarkerRef.current.marker.setMap(null);
+          backupGroupMarkerRef.current.marker.setMap(mapInstanceRef.current);
+
+          // markersRef에서 개별마커 -> 그룹마커로 교체
+          markersRef.current = [...markersRef.current].map((markerWithData) =>
+            backupGroupMarkerRef.current &&
+            isSamePlace(markerWithData, backupGroupMarkerRef.current)
+              ? backupGroupMarkerRef.current
+              : markerWithData,
+          );
+
+          backupGroupMarkerRef.current = null;
         }
-        selectedMarkerRef.current = null;
+      } else {
+        // type === 'group
+        marker.setZIndex(50);
       }
     }
+    selectedMarkerRef.current = null;
     setSelectedPlace(null);
   }, [createMarkerIcon]);
 
@@ -381,43 +518,42 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
       return;
 
     const { naver } = window;
-    const { placeData, marker, placesGroup } = selectedMarkerRef.current;
-
-    // 그룹 데이터가 있는지 확인
-    const isGrouped = placesGroup.count > 1;
+    const { marker, type } = selectedMarkerRef.current;
 
     let infoWindowContent = '';
 
-    if (isGrouped) {
-      // 여러 장소인 경우 목록으로 표시
-      const placesListHtml = placesGroup.places
-        .map((place: ViewNightSpot) => {
-          const iconContent = createMarkerIcon(place, false)?.content;
-          return `
-          <div 
-            id="place-${place.ID}" 
-            class="flex items-center gap-1 p-2 border-b border-gray-200 last:border-b-0 cursor-pointer hover:bg-gray-50 transition-colors"
-            data-place-id="${place.ID}"
-          >
-            ${iconContent}
-            <div class="font-bold text-sm text-zinc-900">${place.TITLE}</div>
-          </div>
-        `;
-        })
-        .join('');
-
-      infoWindowContent = `
-      <div id="infoWindow" class="max-w-[280px] text-zinc-900 border-zinc-900 border-1 rounded shadow">
-        <div class="max-h-[200px] overflow-y-auto">
-          ${placesListHtml}
-        </div>
-      </div>`;
-    } else {
+    if (selectedMarkerRef.current.type === 'single') {
       // 단일 장소인 경우 기존 방식
+      const placeData = selectedMarkerRef.current.pdata;
       infoWindowContent = `
       <div id="infoWindow" class="p-2.5 max-w-[250px] text-zinc-900 border-zinc-900 border-1 rounded shadow cursor-pointer">
         <h4 class="font-bold text-sm">${placeData.TITLE}</h4>
       </div>`;
+    } else {
+      // 여러 장소인 경우 목록으로 표시
+      const placesListHtml = selectedMarkerRef.current.pdataList
+        .map((place: ViewNightSpot) => {
+          const iconContent = createMarkerIcon(place, false)?.content;
+          return `
+            <div 
+              id="place-${place.ID}" 
+              class="flex items-center gap-1 p-2 border-b border-gray-200 last:border-b-0 cursor-pointer hover:bg-gray-50 transition-colors"
+              data-place-id="${place.ID}"
+            >
+              ${iconContent}
+              <div class="font-bold text-sm text-zinc-900">${place.TITLE}</div>
+            </div>
+          `;
+        })
+        .join('');
+
+      infoWindowContent = `
+        <div id="infoWindow" class="max-w-[280px] text-zinc-900 border-zinc-900 border-1 rounded shadow">
+          <div class="max-h-[200px] overflow-y-auto">
+            ${placesListHtml}
+          </div>
+        </div>
+      `;
     }
 
     const infoWindow = new naver.maps.InfoWindow({
@@ -429,9 +565,18 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
 
     // 인포윈도우 클릭 이벤트 추가
     setTimeout(() => {
-      if (isGrouped) {
+      if (selectedMarkerRef.current && type === 'single') {
+        // 단일 장소인 경우 기존 방식
+        const placeData = selectedMarkerRef.current.pdata;
+        const infoWindowElement = document.getElementById('infoWindow');
+        if (infoWindowElement) {
+          infoWindowElement.addEventListener('click', () => handlePlaceSelect(placeData));
+        }
+      } else {
         // 그룹화된 경우 각 장소별 클릭 이벤트 추가
-        placesGroup.places.forEach((place: ViewNightSpot) => {
+        if (!backupGroupMarkerRef.current) return;
+        const places = backupGroupMarkerRef.current.pdataList;
+        places.forEach((place: ViewNightSpot) => {
           const placeElement = document.getElementById(`place-${place.ID}`);
           if (placeElement) {
             placeElement.addEventListener('click', (e) => {
@@ -440,25 +585,20 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
             });
           }
         });
-      } else {
-        // 단일 장소인 경우 기존 방식
-        const infoWindowElement = document.getElementById('infoWindow');
-        if (infoWindowElement) {
-          infoWindowElement.addEventListener('click', () => handlePlaceSelect(placeData));
-        }
       }
     }, 100);
     infoWindow.open(mapInstanceRef.current, marker);
     selectedInfoWindowRef.current = infoWindow;
-  }, [isNaverReady]);
+  }, [isNaverReady, createMarkerIcon]);
 
   // 선택된 장소로 지도 중심 이동
   const moveMapToPlace = useCallback(() => {
     if (!mapInstanceRef.current || !isNaverReady || !selectedMarkerRef.current || !window.naver)
       return;
 
+    if (selectedMarkerRef.current.type === 'group') return;
     const { naver } = window;
-    const { placeData } = selectedMarkerRef.current;
+    const placeData = selectedMarkerRef.current.pdata;
     const placePosition = new naver.maps.LatLng(Number(placeData.LA), Number(placeData.LO));
 
     // 현재 중심/줌 저장
@@ -473,23 +613,16 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   // 장소 선택 핸들러
   const handlePlaceSelect = useCallback(
     (place: ViewNightSpot | null) => {
+
       if (!mapInstanceRef.current || !isNaverReady) return;
 
       if (place) {
-        // 선택된 마커가 그룹 마커인지 확인
-        if (
-          selectedMarkerRef.current?.placesGroup?.count &&
-          selectedMarkerRef.current.placesGroup.count > 1
-        ) {
-          // 현재 선택된 그룹 마커 정보를 originGroupMarkerRef에 저장
-          backupGroupMarkerRef.current = {
-            marker: selectedMarkerRef.current.marker,
-            placeData: selectedMarkerRef.current.placeData,
-            placesGroup: selectedMarkerRef.current.placesGroup,
-          };
+        // 선택한 마커가 그룹 마커 파생인지 확인
+        if (backupGroupMarkerRef.current) {
+          // resetSelectedMarkerAndInfoWindow();
 
           // 그룹 마커 숨기기
-          selectedMarkerRef.current.marker.setMap(null);
+          backupGroupMarkerRef.current.marker.setMap(null);
 
           // 기존 인포윈도우 닫기
           if (selectedInfoWindowRef.current) {
@@ -497,7 +630,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
             selectedInfoWindowRef.current = null;
           }
 
-          // 선택된 장소의 개별 마커 생성
+          // 선택한 장소의 개별 마커 생성
           const { naver } = window;
           const individualMarker = new naver.maps.Marker({
             position: new naver.maps.LatLng(Number(place.LA), Number(place.LO)),
@@ -509,13 +642,10 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
           // selectedMarkerRef를 개별 마커로 업데이트
           selectedMarkerRef.current = {
             marker: individualMarker,
-            placeData: place,
-            placesGroup: {
-              representativeLat: place.LA,
-              representativeLng: place.LO,
-              places: [place],
-              count: 1,
-            },
+            type: 'single',
+            lat: Number(place.LA),
+            lng: Number(place.LO),
+            pdata: place,
           };
 
           // 인포윈도우 표시
@@ -525,13 +655,15 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
           resetSelectedMarkerAndInfoWindow();
 
           // 해당 장소의 마커 찾기
-          const markerPair = markersRef.current.find((pair) => pair.placeData.ID === place.ID);
+          const markerPair = markersRef.current.find(
+            (pair) => pair.lat === Number(place.LA) && pair.lng === Number(place.LO),
+          );
 
-          if (markerPair) {
+          if (markerPair && markerPair.type === 'single') {
             selectedMarkerRef.current = markerPair;
 
             // 마커 스타일 업데이트
-            const iconConfig = createMarkerIcon(markerPair.placeData, true);
+            const iconConfig = createMarkerIcon(markerPair.pdata, true);
             if (iconConfig) {
               markerPair.marker.setIcon(iconConfig);
             }
@@ -579,6 +711,10 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     ],
   );
 
+  const isSamePlace = (markerDataA: MarkerWithData, markerDataB: MarkerWithData) => {
+    return markerDataA.lat === markerDataB.lat && markerDataA.lng === markerDataB.lng;
+  };
+
   // 사용자 장소 데이터 추가
   // useEffect(() => {
   //   console.log('사용자 장소 데이터 추가 useEffect');
@@ -616,7 +752,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         ...place,
         IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`my_${place.LA}_${place.LO}`),
       }));
-      
+
       const seoulApiPlaces = totalPlaceData.filter((place) => !place.ID.startsWith('my_'));
       const newTotalPlaceData = [...seoulApiPlaces, ...customPlaces];
 
@@ -632,7 +768,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         setTotalPlaceData(newTotalPlaceData);
       }
     }
-  }, [authLoading, fetchViewNightSpotData, totalPlaceData, user]);
+  }, [authLoading, fetchViewNightSpotData, totalPlaceData, user, visiblePlacesData]);
 
   const value = {
     mapInstanceRef,
@@ -676,6 +812,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     createPlaceInfo,
     setCreatePlaceInfo,
     groupPlaceByLocation,
+    backupGroupMarkerRef,
   };
 
   return <MapContext.Provider value={value}>{children}</MapContext.Provider>;
