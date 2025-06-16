@@ -96,12 +96,14 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
 
         totalPlaceData.push(...placesAddIdAndFavorite);
       }
-      if (!user) return;
-      const customPlacesAddFavorite = (user.customPlaces || []).map((place) => ({
-        ...place,
-        IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`my_${place.LA}_${place.LO}`),
-      }));
-      totalPlaceData.push(...customPlacesAddFavorite);
+      if (user) {
+        const customPlacesAddFavorite = (user.customPlaces || []).map((place) => ({
+          ...place,
+          IS_FAVORITE: (user?.favoritePlaceIds || []).includes(`my_${place.LA}_${place.LO}`),
+        }));
+        totalPlaceData.push(...customPlacesAddFavorite);
+      }
+      
 
       setTotalPlaceData(totalPlaceData);
     } catch (e) {
@@ -343,56 +345,63 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
           } else if (filteredPdataList.length === 1) {
             // 1개만 남으면 싱글 마커로 교체
             marker.setMap(null); // 기존 그룹 마커 제거
-
-            // 개별 마커 생성
-            const { naver } = window;
-            const individualMarker = new naver.maps.Marker({
-              position: new naver.maps.LatLng(
-                Number(filteredPdataList[0].LA),
-                Number(filteredPdataList[0].LO),
-              ),
-              map: undefined,
-              icon: createMarkerIcon(filteredPdataList[0], false)!,
-              zIndex: 50,
-            });
-
-            const newSingleMarkerObj: SingleMarkerWithData = {
-              marker: individualMarker,
-              type: 'single',
-              lat: Number(filteredPdataList[0].LA),
-              lng: Number(filteredPdataList[0].LO),
-              pdata: filteredPdataList[0],
-            };
-
-            // 마커 클릭 이벤트
-            newSingleMarkerObj.marker.addListener('click', () => {
-              if (backupGroupMarkerRef.current) {
-                backupGroupMarkerRef.current = null;
-              }
-
-              handlePlaceSelect(filteredPdataList[0]);
-            });
-
-            // 마우스 오버 이벤트
-            newSingleMarkerObj.marker.addListener('mouseover', () => {
-              newSingleMarkerObj.marker.setZIndex(1001);
-            });
-
-            // 마우스 아웃 이벤트
-            newSingleMarkerObj.marker.addListener('mouseout', () => {
-              if (selectedMarkerRef.current?.marker !== marker) {
-                newSingleMarkerObj.marker.setZIndex(50);
-              }
-            });
-
+            
+            if (backupGroupMarkerRef.current) {
+              backupGroupMarkerRef.current.marker.setMap(null);
+              backupGroupMarkerRef.current = null;
+            }
+            
             if (isInBounds) {
+              // 개별 마커 생성
+              const { naver } = window;
+              const individualMarker = new naver.maps.Marker({
+                position: new naver.maps.LatLng(
+                  Number(filteredPdataList[0].LA),
+                  Number(filteredPdataList[0].LO),
+                ),
+                map: undefined,
+                icon: createMarkerIcon(filteredPdataList[0], false)!,
+                zIndex: 50,
+              });
+
+              const newSingleMarkerObj: SingleMarkerWithData = {
+                marker: individualMarker,
+                type: 'single',
+                lat: Number(filteredPdataList[0].LA),
+                lng: Number(filteredPdataList[0].LO),
+                pdata: filteredPdataList[0],
+              };
+
+              // 마커 클릭 이벤트
+              newSingleMarkerObj.marker.addListener('click', () => {
+                if (backupGroupMarkerRef.current) {
+                  backupGroupMarkerRef.current = null;
+                }
+
+                handlePlaceSelect(filteredPdataList[0]);
+              });
+
+              // 마우스 오버 이벤트
+              newSingleMarkerObj.marker.addListener('mouseover', () => {
+                newSingleMarkerObj.marker.setZIndex(1001);
+              });
+
+              // 마우스 아웃 이벤트
+              newSingleMarkerObj.marker.addListener('mouseout', () => {
+                if (selectedMarkerRef.current?.marker !== marker) {
+                  newSingleMarkerObj.marker.setZIndex(50);
+                }
+              });
+              
               newSingleMarkerObj.marker.setMap(mapInstanceRef.current);
+              
               // markersRef 배열에서 교체
               markersRef.current[index] = newSingleMarkerObj;
+              visiblePlaces.push(filteredPdataList[0]);
             }
-            visiblePlaces.push(...filteredPdataList);
+            
           } else {
-            // 2개 이상이면 그룹 마커 유지하되 개수 업데이트
+            // 2개 이상이면 기존 그룹마커에 숫자 업데이트
             if (filteredPdataList.length !== pdataList.length) {
               // 개수가 변경된 경우 아이콘 업데이트
               const updatedIcon = {
@@ -414,11 +423,12 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
 
             if (isInBounds) {
               marker.setMap(mapInstanceRef.current);
+              visiblePlaces.push(...filteredPdataList);
             } else {
               marker.setMap(null);
             }
 
-            visiblePlaces.push(...filteredPdataList);
+            
           }
         }
       });
